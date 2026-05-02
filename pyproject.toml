@@ -1,0 +1,8 @@
+[project]
+name = "gtd-llm-assistant"
+version = "0.1.0"
+description = ""
+requires-python = ">=3.11"
+dependencies = [
+]
+
