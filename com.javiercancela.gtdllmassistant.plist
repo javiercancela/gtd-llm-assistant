@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/propertylist-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.javiercancela.gtdllmassistant</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/Users/javier.cancela/Code/personal/gtd-llm-assistant/scripts/run-launchd.sh</string>
+    </array>
+
+    <key>WorkingDirectory</key>
+    <string>/Users/javier.cancela/Code/personal/gtd-llm-assistant</string>
+
+    <key>WatchPaths</key>
+    <array>
+        <string>/Users/javier.cancela/Library/Mobile Documents/iCloud~is~workflow~my~workflows/Documents</string>
+    </array>
+
+    <key>StandardOutPath</key>
+    <string>/Users/javier.cancela/Library/Logs/gtd-llm-assistant.out.log</string>
+
+    <key>StandardErrorPath</key>
+    <string>/Users/javier.cancela/Library/Logs/gtd-llm-assistant.err.log</string>
+
+    <key>RunAtLoad</key>
+    <true/>
+
+    <key>ThrottleInterval</key>
+    <integer>10</integer>
+</dict>
+</plist>
