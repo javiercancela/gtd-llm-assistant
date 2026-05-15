@@ -129,7 +129,14 @@ def _normalize_english_item(item: dict[str, Any], *, expected_type: str) -> dict
         description = summary
         if url:
             description = f"{summary}\n\n{url}".strip() if summary else url
-        return {"type": "reference", "title": title, "description": description}
+        normalized: dict[str, Any] = {
+            "type": "reference",
+            "title": title,
+            "description": description,
+        }
+        if url:
+            normalized["url"] = url
+        return normalized
 
     if item_type == "project":
         subtasks = item.get("subtasks") or []

@@ -63,6 +63,7 @@ def _build_task_body(
     title: str,
     notes: str | None,
     due_days_from_now: int | None,
+    url: str | None = None,
 ) -> dict:
     body: dict = {"title": title}
 
@@ -74,6 +75,9 @@ def _build_task_body(
         # Google Tasks expects an RFC3339 timestamp (in practice it treats it as a date).
         body["due"] = due.isoformat().replace("+00:00", "Z")
 
+    if url:
+        body["links"] = [{"type": "generic", "link": url}]
+
     return body
 
 
@@ -82,9 +86,10 @@ def create_task(
     title: str,
     notes: str | None = None,
     due_days_from_now: int | None = None,
+    url: str | None = None,
 ) -> dict:
     service = _build_tasks_service()
-    body = _build_task_body(title, notes, due_days_from_now)
+    body = _build_task_body(title, notes, due_days_from_now, url)
     return service.tasks().insert(tasklist=tasklist, body=body).execute()
 
 
@@ -93,6 +98,7 @@ def create_project(
     title: str,
     notes: str | None = None,
     due_days_from_now: int | None = None,
+    url: str | None = None,
 ) -> dict:
     """Create a parent task intended to hold subtasks.
 
@@ -105,6 +111,7 @@ def create_project(
         title=title,
         notes=notes,
         due_days_from_now=due_days_from_now,
+        url=url,
     )
 
 
@@ -114,9 +121,10 @@ def add_task_to_project(
     title: str,
     notes: str | None = None,
     due_days_from_now: int | None = None,
+    url: str | None = None,
 ) -> dict:
     service = _build_tasks_service()
-    body = _build_task_body(title, notes, due_days_from_now)
+    body = _build_task_body(title, notes, due_days_from_now, url)
     return (
         service.tasks()
         .insert(tasklist=tasklist, parent=project_id, body=body)

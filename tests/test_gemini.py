@@ -65,6 +65,7 @@ def test_normalize_english_reference_includes_url() -> None:
         expected_type="reference",
     )
     assert normalized["description"] == "A useful read.\n\nhttps://example.com"
+    assert normalized["url"] == "https://example.com"
 
 
 def test_normalize_english_project_keeps_subtasks() -> None:

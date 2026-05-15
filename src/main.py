@@ -33,11 +33,13 @@ def main() -> None:
             language, items = classify_message(data, logs_dir=INBOX_LOGS)
             append_inbox_log(INBOX_LOGS, "info", f"classified {f.name} lang={language} items={len(items)}")
 
+            source_url = str(data.get("url", "")).strip() or None
             for item in items:
                 task_result = create_item_from_classification(
                     source_name=f.name,
                     item=item,
                     language=language,
+                    source_url=source_url,
                 )
                 append_inbox_log(
                     INBOX_LOGS,

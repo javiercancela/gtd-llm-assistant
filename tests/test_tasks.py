@@ -13,7 +13,7 @@ def test_create_item_from_classification_dedupes_by_marker(monkeypatch) -> None:
 
     called = {"create_task": 0}
 
-    def fake_create_task(*, tasklist: str, title: str, notes: str):
+    def fake_create_task(*, tasklist: str, title: str, notes: str, url: str | None = None):
         called["create_task"] += 1
         return {"id": "new-1"}
 
@@ -35,7 +35,7 @@ def test_english_task_routes_to_work(monkeypatch) -> None:
 
     captured: dict[str, str] = {}
 
-    def fake_create_task(*, tasklist: str, title: str, notes: str):
+    def fake_create_task(*, tasklist: str, title: str, notes: str, url: str | None = None):
         captured["tasklist"] = tasklist
         return {"id": "task-en-1"}
 
@@ -57,7 +57,7 @@ def test_english_waiting_for_routes_to_waiting_list(monkeypatch) -> None:
 
     captured: dict[str, str] = {}
 
-    def fake_create_task(*, tasklist: str, title: str, notes: str):
+    def fake_create_task(*, tasklist: str, title: str, notes: str, url: str | None = None):
         captured["tasklist"] = tasklist
         return {"id": "task-wf-1"}
 
@@ -79,7 +79,7 @@ def test_english_reference_routes_to_reference_list(monkeypatch) -> None:
 
     captured: dict[str, str] = {}
 
-    def fake_create_task(*, tasklist: str, title: str, notes: str):
+    def fake_create_task(*, tasklist: str, title: str, notes: str, url: str | None = None):
         captured["tasklist"] = tasklist
         return {"id": "task-ref-1"}
 
@@ -101,7 +101,7 @@ def test_spanish_task_routes_to_personal(monkeypatch) -> None:
 
     captured: dict[str, str] = {}
 
-    def fake_create_task(*, tasklist: str, title: str, notes: str):
+    def fake_create_task(*, tasklist: str, title: str, notes: str, url: str | None = None):
         captured["tasklist"] = tasklist
         return {"id": "task-es-1"}
 
@@ -124,7 +124,7 @@ def test_create_project_adds_first_subtask_when_no_subtasks(monkeypatch) -> None
 
     calls = {"create_project": 0, "add_task_to_project": 0, "tasklist": ""}
 
-    def fake_create_project(*, tasklist: str, title: str, notes: str):
+    def fake_create_project(*, tasklist: str, title: str, notes: str, url: str | None = None):
         calls["create_project"] += 1
         calls["tasklist"] = tasklist
         assert "inbox_hash:hashxyz" in notes
@@ -159,7 +159,7 @@ def test_create_project_adds_classified_subtasks(monkeypatch) -> None:
 
     subtask_titles: list[str] = []
 
-    def fake_create_project(*, tasklist: str, title: str, notes: str):
+    def fake_create_project(*, tasklist: str, title: str, notes: str, url: str | None = None):
         return {"id": "project-1"}
 
     def fake_add_task_to_project(*, tasklist: str, project_id: str, title: str):
@@ -181,6 +181,54 @@ def test_create_project_adds_classified_subtasks(monkeypatch) -> None:
 
     assert result["status"] == "created"
     assert subtask_titles == ["Book flights", "Reserve hotel"]
+
+
+def test_create_item_passes_source_url_to_create_task(monkeypatch) -> None:
+    monkeypatch.setattr(tasks, "list_tasks", lambda tasklist: [])
+    monkeypatch.setattr(tasks, "_build_idempotency_hash", lambda source_name, item: "hash-url")
+
+    captured: dict[str, str | None] = {}
+
+    def fake_create_task(*, tasklist: str, title: str, notes: str, url: str | None = None):
+        captured["url"] = url
+        return {"id": "task-url-1"}
+
+    monkeypatch.setattr(tasks, "create_task", fake_create_task)
+
+    result = tasks.create_item_from_classification(
+        source_name="share.json",
+        item={"type": "task", "title": "Read later", "description": ""},
+        source_url="https://example.com/article",
+    )
+
+    assert result["status"] == "created"
+    assert captured["url"] == "https://example.com/article"
+
+
+def test_create_item_prefers_item_url_over_source_url(monkeypatch) -> None:
+    monkeypatch.setattr(tasks, "list_tasks", lambda tasklist: [])
+    monkeypatch.setattr(tasks, "_build_idempotency_hash", lambda source_name, item: "hash-item-url")
+
+    captured: dict[str, str | None] = {}
+
+    def fake_create_task(*, tasklist: str, title: str, notes: str, url: str | None = None):
+        captured["url"] = url
+        return {"id": "task-item-url-1"}
+
+    monkeypatch.setattr(tasks, "create_task", fake_create_task)
+
+    tasks.create_item_from_classification(
+        source_name="share.json",
+        item={
+            "type": "reference",
+            "title": "Article",
+            "description": "Summary",
+            "url": "https://example.com/from-item",
+        },
+        source_url="https://example.com/from-source",
+    )
+
+    assert captured["url"] == "https://example.com/from-item"
 
 
 def test_create_project_reuses_existing_project(monkeypatch) -> None:

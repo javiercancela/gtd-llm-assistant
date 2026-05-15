@@ -48,6 +48,13 @@ def _find_project_by_title(tasklist: str, title: str) -> dict | None:
     return None
 
 
+def _resolve_task_url(item: dict[str, str], source_url: str | None) -> str | None:
+    url = str(item.get("url", "")).strip()
+    if not url and source_url:
+        url = source_url.strip()
+    return url or None
+
+
 def _target_tasklist(item_type: str, *, language: str = "en") -> str:
     if language == "es":
         return PERSONAL_TL
@@ -77,10 +84,12 @@ def create_item_from_classification(
     source_name: str,
     item: dict[str, str],
     language: str = "en",
+    source_url: str | None = None,
 ) -> dict[str, str]:
     item_type = item.get("type", "task")
     title = item.get("title", "").strip() or "Inbox item"
     description = item.get("description", "").strip()
+    url = _resolve_task_url(item, source_url)
     tasklist = _target_tasklist(item_type, language=language)
     marker = _build_idempotency_hash(source_name, item)
 
@@ -113,7 +122,7 @@ def create_item_from_classification(
                 "type": item_type,
             }
 
-        created = create_project(tasklist=tasklist, title=title, notes=notes)
+        created = create_project(tasklist=tasklist, title=title, notes=notes, url=url)
         project_id = created.get("id")
         if project_id:
             if subtasks:
@@ -125,7 +134,7 @@ def create_item_from_classification(
                     title=PROJECT_FIRST_SUBTASK_TITLE,
                 )
     else:
-        created = create_task(tasklist=tasklist, title=title, notes=notes)
+        created = create_task(tasklist=tasklist, title=title, notes=notes, url=url)
 
     return {
         "status": "created",
