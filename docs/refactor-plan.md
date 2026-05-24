@@ -271,7 +271,7 @@ Keep macOS-only import guards in `hydrate.py`; non-Darwin remains no-op (already
 ### 4.7 `services/tasklists.py`
 
 - Rename to **`infrastructure/gtd_task_lists.py`** or **`config/task_lists.py`**.
-- Expose a **`GtdTaskLists`** dataclass loaded once at startup (personal, work, waiting_for, reference) instead of module-level `WORK_TL` constants.
+- Expose a **`GtdTaskLists`** dataclass loaded once at startup (personal, work, waiting_for) instead of module-level `WORK_TL` constants.
 - Keeps env override behavior; removes “service layer” mislabel.
 
 ---

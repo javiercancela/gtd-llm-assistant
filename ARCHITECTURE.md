@@ -56,7 +56,7 @@ deduped Google Tasks entries or saved references, moves successful drops to
 ## Secrets And Logs
 
 - `GEMINI_API_KEY` is required for live Gemini calls.
-- `GTD_TASKLIST_PERSONAL|WORK|WAITING_FOR|REFERENCE` override Google Tasks list IDs.
+- `GTD_TASKLIST_PERSONAL|WORK|WAITING_FOR` override Google Tasks list IDs.
 - `GTD_WATCH_DIR`, `GTD_INBOX_DIR`, `GTD_PROCESSED_DIR`, and `GTD_LOGS_DIR`
   override filesystem paths.
 - `GTD_REFERENCE_DB` overrides the local SQLite reference database path.

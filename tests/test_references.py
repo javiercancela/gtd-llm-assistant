@@ -16,7 +16,6 @@ from gtd_assistant.domain.reference import (
 )
 from gtd_assistant.domain.routing import (
     BUCKET_PERSONAL,
-    BUCKET_REFERENCE,
     BUCKET_WAITING_FOR,
     BUCKET_WORK,
 )
@@ -188,7 +187,6 @@ def test_process_inbox_saves_reference_without_google_task(tmp_path: Path) -> No
                 BUCKET_PERSONAL: "PER",
                 BUCKET_WORK: "WRK",
                 BUCKET_WAITING_FOR: "WAIT",
-                BUCKET_REFERENCE: "REF",
             },
             logger=_Logger(),
             reference_store=reference_store,

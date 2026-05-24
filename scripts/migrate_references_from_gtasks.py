@@ -13,13 +13,12 @@ from gtd_assistant.adapters.qwen_embedder import QwenReferenceEmbedder
 from gtd_assistant.adapters.sqlite_reference_store import SQLiteReferenceStore
 from gtd_assistant.application.save_reference import save_reference
 from gtd_assistant.domain.dedupe import IDEMPOTENCY_MARKER_PREFIX
-from gtd_assistant.infrastructure.gtd_task_lists import load_gtd_task_lists
 from gtd_assistant.infrastructure.reference_config import load_reference_db_path
 
 
 def main() -> None:
     args = _parse_args()
-    tasks = list_tasks(load_gtd_task_lists().reference)
+    tasks = list_tasks(args.tasklist_id)
     failures: list[str] = []
 
     if args.dry_run:
@@ -58,6 +57,11 @@ def main() -> None:
 
 def _parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--tasklist-id",
+        required=True,
+        help="Google Tasks list ID to read legacy reference tasks from",
+    )
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument(
         "--failure-log",

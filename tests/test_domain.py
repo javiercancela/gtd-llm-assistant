@@ -9,7 +9,6 @@ _TASKLISTS = {
     "personal": "PER",
     "work": "WRK",
     "waiting_for": "WAIT",
-    "reference": "REF",
 }
 
 
@@ -57,7 +56,7 @@ def test_gtd_list_for_spanish_always_routes_to_personal() -> None:
 def test_gtd_list_for_english_routes_by_kind() -> None:
     assert gtd_list_for("task", "en", tasklists=_TASKLISTS) == "WRK"
     assert gtd_list_for("project", "en", tasklists=_TASKLISTS) == "WRK"
-    assert gtd_list_for("reference", "en", tasklists=_TASKLISTS) == "REF"
+    assert gtd_list_for("reference", "en", tasklists=_TASKLISTS) == "WRK"
     assert gtd_list_for("waiting_for", "en", tasklists=_TASKLISTS) == "WAIT"
 
 

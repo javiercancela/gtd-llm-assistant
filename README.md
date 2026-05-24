@@ -50,10 +50,8 @@ Optional Google Tasks list overrides:
 - `GTD_TASKLIST_PERSONAL`
 - `GTD_TASKLIST_WORK`
 - `GTD_TASKLIST_WAITING_FOR`
-- `GTD_TASKLIST_REFERENCE`
 
-`GTD_TASKLIST_REFERENCE` is only used by the one-shot migration script; new
-English references are stored in `GTD_REFERENCE_DB`.
+English references are stored in `GTD_REFERENCE_DB`, not Google Tasks.
 
 ## References MCP
 
@@ -66,11 +64,12 @@ uv run gtd-references-mcp
 It exposes tools to search, list, fetch, tag-browse, and manually add saved
 references.
 
-To migrate the old Google Tasks Reference list:
+To migrate a legacy Google Tasks reference list (pass the source list ID from
+`list_tasklists()`):
 
 ```bash
-uv run python scripts/migrate_references_from_gtasks.py --dry-run
-uv run python scripts/migrate_references_from_gtasks.py
+uv run python scripts/migrate_references_from_gtasks.py --tasklist-id YOUR_LIST_ID --dry-run
+uv run python scripts/migrate_references_from_gtasks.py --tasklist-id YOUR_LIST_ID
 ```
 
 ## Google Tasks OAuth

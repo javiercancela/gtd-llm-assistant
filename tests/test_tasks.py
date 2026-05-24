@@ -5,7 +5,6 @@ from gtd_assistant.application.publish_classified_item import (
 from gtd_assistant.domain.dedupe import IDEMPOTENCY_MARKER_PREFIX, dedupe_marker
 from gtd_assistant.domain.routing import (
     BUCKET_PERSONAL,
-    BUCKET_REFERENCE,
     BUCKET_WAITING_FOR,
     BUCKET_WORK,
 )
@@ -15,7 +14,6 @@ _TASKLISTS = {
     BUCKET_PERSONAL: "PER",
     BUCKET_WORK: "WRK",
     BUCKET_WAITING_FOR: "WAIT",
-    BUCKET_REFERENCE: "REF",
 }
 
 
@@ -75,19 +73,6 @@ def test_english_waiting_for_routes_to_waiting_list() -> None:
 
     assert result["status"] == "created"
     assert repo.created_tasks[0]["tasklist"] == "WAIT"
-
-
-def test_english_reference_routes_to_reference_list() -> None:
-    repo = FakeTaskListRepository()
-
-    result = _publish(
-        repo,
-        item={"type": "reference", "title": "Hotel confirmation", "description": ""},
-        language="en",
-    )
-
-    assert result["status"] == "created"
-    assert repo.created_tasks[0]["tasklist"] == "REF"
 
 
 def test_spanish_task_routes_to_personal() -> None:
@@ -195,7 +180,7 @@ def test_create_item_prefers_item_url_over_source_url() -> None:
         repo,
         source_name="share.json",
         item={
-            "type": "reference",
+            "type": "task",
             "title": "Article",
             "description": "Summary",
             "url": "https://example.com/from-item",

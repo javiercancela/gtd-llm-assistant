@@ -11,7 +11,6 @@ from gtd_assistant.application.process_inbox_run import (
 )
 from gtd_assistant.domain.routing import (
     BUCKET_PERSONAL,
-    BUCKET_REFERENCE,
     BUCKET_WAITING_FOR,
     BUCKET_WORK,
 )
@@ -67,7 +66,6 @@ def test_process_all_pending_captures_publishes_and_archives(tmp_path: Path) -> 
                 BUCKET_PERSONAL: "PER",
                 BUCKET_WORK: "WRK",
                 BUCKET_WAITING_FOR: "WAIT",
-                BUCKET_REFERENCE: "REF",
             },
             logger=logger,
         ),

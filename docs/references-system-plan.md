@@ -123,7 +123,7 @@ src/gtd_assistant/
     mcp_server.py                # stdio MCP server entry point (separate console script)
 ```
 
-The existing `application/publish_classified_item.py` keeps doing what it does for tasks, projects, and waiting-for. For `reference`, it delegates to `save_reference` instead of the Google Tasks path. Routing in `domain/routing.py` no longer needs the `BUCKET_REFERENCE` branch for the publish path — it stays for backward-compat tests, then can be removed in a follow-up.
+The existing `application/publish_classified_item.py` keeps doing what it does for tasks, projects, and waiting-for. For `reference`, it delegates to `save_reference` instead of the Google Tasks path.
 
 ## 5. MCP server
 
@@ -161,7 +161,7 @@ In `application/process_inbox_run.process_one_capture`, the loop currently calls
 Standalone script at `scripts/migrate_references_from_gtasks.py`, invoked by hand once:
 
 1. Auth into Google Tasks with the existing OAuth flow.
-2. List every task in the Reference tasklist (`GTD_TASKLIST_REFERENCE`).
+2. List every task in the legacy Google Tasks list passed via `--tasklist-id`.
 3. For each task, parse `notes` into `summary` + `url`. Heuristic: if the last non-empty line is a URL, that's the URL; the rest is the summary. Else inspect the task's `links` field.
 4. Build a `Reference` with `source="migration:gtasks"`, `captured_at = task.updated`, `metadata_json.gtasks_id = task.id`.
 5. Embed in batches, upsert. Dedupe on URL; rows missing a URL dedupe on title+summary hash.
@@ -178,8 +178,6 @@ GTD_REFERENCE_DB=~/.local/share/gtd-llm-assistant/references.sqlite3
 ```
 
 That's the only one. The model name and query instruction are hard-coded constants in the adapter — they're not user choices, and a config knob would only invite drift between code and data (different instructions silently produce worse retrieval).
-
-`GTD_TASKLIST_REFERENCE` stays defined so the migration script can read it, but the runtime path no longer uses it.
 
 ## 9. Testing strategy
 
@@ -217,7 +215,7 @@ Each step has a verify check so the build can loop without me asking. Order is c
    *Verify:* boot the server stdio in a test, call each tool, assert shapes. Then add it to Claude Desktop / Codex MCP config and run one real query end-to-end.
 
 6. **Cleanup.**
-   Remove the `BUCKET_REFERENCE` publish branch (or leave it dormant with a comment if the test suite still hits it). Update `ARCHITECTURE.md` to mention the reference store and MCP server. Add an `ARCHITECTURE.md` inside the new subpackages following the existing per-layer-doc convention.
+   Update `ARCHITECTURE.md` to mention the reference store and MCP server. Add an `ARCHITECTURE.md` inside the new subpackages following the existing per-layer-doc convention.
    *Verify:* `uv run pytest` green; `uv run main` succeeds on a fixture batch; MCP server runs from Claude Desktop.
 
 ## 11. Open questions worth resolving before step 5
