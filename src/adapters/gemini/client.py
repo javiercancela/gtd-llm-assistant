@@ -1,3 +1,7 @@
+"""Google Gemini JSON client adapter."""
+
+from __future__ import annotations
+
 import os
 from pathlib import Path
 from typing import Any
@@ -5,11 +9,24 @@ from typing import Any
 from google import genai
 from google.genai import errors, types
 
+from adapters.gemini.response_parser import parse_json_from_gemini_payload
 from gemini_log import append_gemini_log
 
 API_KEY_ENV = "GEMINI_API_KEY"
 MODEL_FLASH = "gemini-3-flash-preview"
 MODEL_PRO = "gemini-3.1-pro-preview"
+
+
+class GeminiJsonClient:
+    """JsonLlm backed by Gemini's generate_content API."""
+
+    def __init__(self, *, model: str = MODEL_FLASH, logs_dir: Path | None = None) -> None:
+        self.model = model
+        self.logs_dir = logs_dir
+
+    def complete_json(self, prompt: str) -> Any:
+        response = call_gemini(prompt, self.model, logs_dir=self.logs_dir)
+        return parse_json_from_gemini_payload(response)
 
 
 def _load_api_key() -> str:

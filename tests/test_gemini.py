@@ -1,8 +1,9 @@
-from unittest.mock import patch
-
+from adapters.gemini.response_parser import parse_json_from_gemini_payload
+from application.classify_capture import classify_capture
 from domain.classified_item import normalize_english_item
 from domain.language import detect_language_from_capture
-from services.gemini import classify_message, parse_json_from_gemini_payload
+from fakes.llm import FakeJsonLlm
+from fakes.task_lists import FakeTaskListRepository
 
 
 def _payload(text: str) -> dict:
@@ -80,41 +81,52 @@ def test_normalize_english_project_keeps_subtasks() -> None:
     assert normalized["subtasks"] == ["Book flights", "Reserve hotel"]
 
 
-@patch("services.gemini.call_gemini")
-@patch("services.gemini._existing_project_titles", return_value=["Plan trip"])
-def test_classify_message_english_two_phase(mock_projects, mock_call_gemini) -> None:
-    mock_call_gemini.side_effect = [
-        _payload('[{"type":"task","text":"Buy milk"}]'),
-        _payload('[{"type":"task","title":"Buy milk","description":""}]'),
-    ]
+def test_classify_capture_english_two_phase() -> None:
+    llm = FakeJsonLlm(
+        [
+            [{"type": "task", "text": "Buy milk"}],
+            [{"type": "task", "title": "Buy milk", "description": ""}],
+        ]
+    )
+    repo = FakeTaskListRepository()
 
-    language, items = classify_message({"text": "Buy milk"})
+    language, items = classify_capture(
+        {"text": "Buy milk"},
+        llm=llm,
+        task_repository=repo,
+        work_tasklist="WRK",
+    )
 
     assert language == "en"
     assert items == [{"type": "task", "title": "Buy milk", "description": ""}]
-    assert mock_call_gemini.call_count == 2
+    assert len(llm.prompts) == 2
 
 
-@patch("services.gemini.call_gemini")
-@patch("services.gemini._existing_project_titles", return_value=["Plan trip"])
-def test_classify_message_english_project_uses_existing_projects(
-    mock_projects, mock_call_gemini
-) -> None:
-    mock_call_gemini.side_effect = [
-        _payload('[{"type":"project","text":"Book flights for the trip"}]'),
-        _payload(
-            """{
-              "type": "project",
-              "title": "Plan trip",
-              "description": "",
-              "existing_project_title": "Plan trip",
-              "subtasks": ["Book flights"]
-            }"""
-        ),
-    ]
+def test_classify_capture_english_project_uses_existing_projects() -> None:
+    llm = FakeJsonLlm(
+        [
+            [{"type": "project", "text": "Book flights for the trip"}],
+            {
+                "type": "project",
+                "title": "Plan trip",
+                "description": "",
+                "existing_project_title": "Plan trip",
+                "subtasks": ["Book flights"],
+            },
+        ]
+    )
+    repo = FakeTaskListRepository(
+        projects={"WRK": [{"id": "project-1", "title": "Plan trip"}]}
+    )
 
-    language, items = classify_message({"text": "Book flights for the trip"})
+    language, items = classify_capture(
+        {"text": "Book flights for the trip"},
+        llm=llm,
+        task_repository=repo,
+        work_tasklist="WRK",
+    )
 
     assert language == "en"
     assert items[0]["existing_project_title"] == "Plan trip"
     assert items[0]["subtasks"] == ["Book flights"]
+    assert "Plan trip" in llm.prompts[1]

@@ -19,7 +19,8 @@ This document describes the codebase as it stands today. The target layout
 3. For each candidate:
    - `inbox_json.load_json_file` reads the payload, waiting on iCloud
      hydration (`icloud_download.ensure_icloud_file_local`) when needed.
-   - `services.gemini.classify_message` returns `(language, items)`.
+   - `application.classify_capture.classify_capture` returns `(language, items)`
+     through the `services.gemini.classify_message` compatibility wrapper.
    - `services.tasks.create_item_from_classification` routes each item to a
      Google Tasks list (creating, deduping, or appending subtasks).
    - The drop is moved into `processed/`.
@@ -31,10 +32,10 @@ This document describes the codebase as it stands today. The target layout
 | Layer | Directory / file | Responsibility |
 |-------|------------------|----------------|
 | Entry | `src/main.py` | Pipeline loop, hardcoded paths, top-level error handling. |
-| Domain helpers | _embedded in `services/`_ | Language detection, normalization, routing, dedupe — extracted to `src/domain/` during refactor phase 1. |
-| Application | `src/services/gemini.py`, `src/services/tasks.py` | Orchestrate classification and publishing; talk to adapters. |
+| Domain helpers | `src/domain/` | Language detection, normalization, routing, dedupe. |
+| Application | `src/application/classify_capture.py`, `src/application/publish_classified_item.py` | Orchestrate classification and publishing through ports. |
 | Prompts | `src/services/prompts.py` | English (classify + per-type enrich) and Spanish (single) prompt templates. |
-| Adapters | `src/adapters/gemini.py`, `src/adapters/gcloud_tasks.py`, `src/adapters/gcloud_auth.py` | Thin wrappers over `google-genai` and Google Tasks SDKs. |
+| Adapters | `src/adapters/gemini/`, `src/adapters/gcloud_tasks.py`, `src/adapters/gcloud_auth.py` | Thin wrappers over `google-genai` and Google Tasks SDKs. |
 | Infrastructure | `src/inbox_json.py`, `src/icloud_download.py`, `src/inbox_log.py`, `src/gemini_log.py`, `src/services/tasklists.py` | iCloud-aware JSON reads, hydration, log files, tasklist IDs. |
 
 ## Classification flow
@@ -46,7 +47,8 @@ This document describes the codebase as it stands today. The target layout
   `type` per capture, then a type-specific enrichment prompt (`TASK_…`,
   `PROJECT_…`, `REFERENCE_…`, `WAITING_FOR_…`). Items normalized via
   `domain.classified_item.normalize_english_item`. Project enrichment receives
-  the current Work-list project titles so the LLM can reuse existing projects.
+  the current Work-list project titles through `TaskListRepository` so the LLM
+  can reuse existing projects without importing the Google Tasks adapter.
 
 ## Publishing flow
 
