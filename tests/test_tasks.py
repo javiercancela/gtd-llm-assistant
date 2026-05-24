@@ -102,6 +102,23 @@ def test_spanish_task_routes_to_personal() -> None:
     assert result["status"] == "created"
     assert repo.created_tasks[0]["tasklist"] == "PER"
     assert repo.created_tasks[0]["notes"] is None
+    assert repo.created_projects == []
+
+
+def test_spanish_project_type_creates_personal_task_not_project() -> None:
+    repo = FakeTaskListRepository()
+
+    result = _publish(
+        repo,
+        item={"type": "project", "title": "Planificar viaje", "description": ""},
+        language="es",
+    )
+
+    assert result["status"] == "created"
+    assert result["type"] == "task"
+    assert repo.created_tasks[0]["tasklist"] == "PER"
+    assert repo.created_tasks[0]["title"] == "Planificar viaje"
+    assert repo.created_projects == []
 
 
 def test_publish_classified_item_dedupes_empty_description_by_title() -> None:

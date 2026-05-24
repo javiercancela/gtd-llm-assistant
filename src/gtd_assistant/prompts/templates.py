@@ -132,14 +132,13 @@ Input:
 """
 
 CLASSIFY_SPANISH_PROMPT = """
-Eres un asistente de GTD que clasifica los items del inbox.
+Eres un asistente de GTD que clasifica los items del inbox personal.
 
 Reglas:
-- tipo = "tarea" si es una sola acción tangible
-- tipo = "proyecto" si requiere múltiples pasos
-- tipo = "referencia" si no requiere acción
-- tipo = "esperando" si depende de otra persona/entidad y estamos esperando respuesta o entrega
-- tipo = "compra" si es añadir algo para comprar
+- tipo = "compra" si es añadir algo para comprar (lista de la compra)
+- tipo = "tarea" para cualquier otra acción tangible (incluye varios pasos, esperas a otras
+  personas, o información que en otro idioma sería referencia o proyecto)
+- Nunca uses otros tipos: no "proyecto", no "referencia", no "esperando"
 
 También:
 - Genera un título corto (máximo 8 palabras)

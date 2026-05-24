@@ -15,22 +15,15 @@ from gtd_assistant.domain.item_kind import (
     ITEM_KIND_REFERENCE,
     ITEM_KIND_TASK,
     ITEM_KIND_WAITING_FOR,
-    SPANISH_TYPE_MAP,
     VALID_ITEM_KINDS,
 )
 
 
 def normalize_spanish_item(item: dict[str, Any]) -> dict[str, str]:
-    """Map a Spanish-prompt LLM dict (`tipo/titulo/descripcion`) to canonical."""
-    raw_type = str(item.get("tipo", "")).strip().lower()
+    """Map a Spanish-prompt LLM dict (`tipo/titulo/descripcion`) to a Personal task."""
     title = str(item.get("titulo", "")).strip()
     description = str(item.get("descripcion", "")).strip()
-
-    kind = SPANISH_TYPE_MAP.get(raw_type, ITEM_KIND_TASK)
-    if kind not in VALID_ITEM_KINDS:
-        kind = ITEM_KIND_TASK
-
-    return {"type": kind, "title": title, "description": description}
+    return {"type": ITEM_KIND_TASK, "title": title, "description": description}
 
 
 def normalize_english_item(item: dict[str, Any], *, expected_type: str) -> dict[str, Any]:

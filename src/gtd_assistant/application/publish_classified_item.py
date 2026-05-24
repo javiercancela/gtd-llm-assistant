@@ -26,6 +26,8 @@ def publish_classified_item(
 ) -> dict[str, str]:
     """Create, dedupe, or update one classified item."""
     item_type = str(item.get("type", "task")).strip() or "task"
+    if language == "es":
+        item_type = "task"
     title = str(item.get("title", "")).strip() or "Inbox item"
     description = str(item.get("description", "")).strip()
     url = _resolve_task_url(item, source_url)

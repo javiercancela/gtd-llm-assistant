@@ -14,11 +14,8 @@ VALID_ITEM_KINDS: frozenset[str] = frozenset(
     {ITEM_KIND_TASK, ITEM_KIND_PROJECT, ITEM_KIND_REFERENCE, ITEM_KIND_WAITING_FOR}
 )
 
-# Spanish prompt emits these labels; map them onto the canonical kinds.
+# Spanish prompt emits only compra/tarea; both map to tasks on the Personal list.
 SPANISH_TYPE_MAP: dict[str, str] = {
     "tarea": ITEM_KIND_TASK,
-    "proyecto": ITEM_KIND_PROJECT,
-    "referencia": ITEM_KIND_REFERENCE,
-    "esperando": ITEM_KIND_WAITING_FOR,
     "compra": ITEM_KIND_TASK,
 }

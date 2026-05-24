@@ -1,3 +1,5 @@
+import pytest
+
 from gtd_assistant.domain.classified_item import normalize_spanish_item
 from gtd_assistant.domain.dedupe import IDEMPOTENCY_MARKER_PREFIX, dedupe_marker, notes_with_marker
 from gtd_assistant.domain.language import detect_language_from_capture
@@ -26,11 +28,26 @@ def test_normalize_spanish_item_maps_compra_to_task() -> None:
     assert normalized == {"type": "task", "title": "Leche", "description": ""}
 
 
-def test_normalize_spanish_item_unknown_type_defaults_to_task() -> None:
+def test_normalize_spanish_item_maps_tarea_to_task() -> None:
     normalized = normalize_spanish_item(
-        {"tipo": "desconocido", "titulo": "X", "descripcion": "Y"}
+        {"tipo": "tarea", "titulo": "Llamar al fontanero", "descripcion": "Fuga en cocina"}
     )
-    assert normalized["type"] == "task"
+    assert normalized == {
+        "type": "task",
+        "title": "Llamar al fontanero",
+        "description": "Fuga en cocina",
+    }
+
+
+@pytest.mark.parametrize(
+    "tipo",
+    ["proyecto", "referencia", "esperando", "desconocido"],
+)
+def test_normalize_spanish_item_non_task_types_become_task(tipo: str) -> None:
+    normalized = normalize_spanish_item(
+        {"tipo": tipo, "titulo": "X", "descripcion": "Y"}
+    )
+    assert normalized == {"type": "task", "title": "X", "description": "Y"}
 
 
 def test_gtd_list_for_spanish_always_routes_to_personal() -> None:

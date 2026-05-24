@@ -130,3 +130,29 @@ def test_classify_capture_english_project_uses_existing_projects() -> None:
     assert items[0]["existing_project_title"] == "Plan trip"
     assert items[0]["subtasks"] == ["Book flights"]
     assert "Plan trip" in llm.prompts[1]
+
+
+def test_classify_capture_spanish_normalizes_to_personal_tasks() -> None:
+    llm = FakeJsonLlm(
+        [
+            [
+                {"tipo": "compra", "titulo": "Leche", "descripcion": ""},
+                {"tipo": "tarea", "titulo": "Llamar al fontanero", "descripcion": ""},
+            ]
+        ]
+    )
+    repo = FakeTaskListRepository()
+
+    language, items = classify_capture(
+        {"text_es": "Comprar leche y llamar al fontanero"},
+        llm=llm,
+        task_repository=repo,
+        work_tasklist="WRK",
+    )
+
+    assert language == "es"
+    assert items == [
+        {"type": "task", "title": "Leche", "description": ""},
+        {"type": "task", "title": "Llamar al fontanero", "description": ""},
+    ]
+    assert len(llm.prompts) == 1
