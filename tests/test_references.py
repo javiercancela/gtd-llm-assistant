@@ -6,14 +6,18 @@ from fakes.llm import FakeJsonLlm
 from fakes.reference_store import FakeReferenceStore
 from fakes.task_lists import FakeTaskListRepository
 from gtd_assistant.adapters.sqlite_reference_store import SQLiteReferenceStore
+from gtd_assistant.application.prepare_capture import SourceDocument
 from gtd_assistant.application.process_inbox_run import InboxRunDependencies, process_all_pending_captures
 from gtd_assistant.application.save_reference import save_reference
 from gtd_assistant.application.search_references import search_references
 from gtd_assistant.domain.reference import (
     NewReference,
+    ReferenceRecord,
+    ReferenceSearchResult,
     normalize_reference_tags,
     reference_dedupe_key,
 )
+from gtd_assistant.delivery.reference_cli import format_markdown_results
 from gtd_assistant.domain.routing import (
     BUCKET_PERSONAL,
     BUCKET_WAITING_FOR,
@@ -72,6 +76,70 @@ def test_save_reference_dedupes_by_url_without_reembedding() -> None:
     assert len(embedder.document_texts) == 1
 
 
+def test_save_reference_dedupes_source_document_by_hash_without_reembedding(tmp_path: Path) -> None:
+    source = tmp_path / "note.md"
+    source.write_text("hello", encoding="utf-8")
+    source_document = SourceDocument(
+        original_path=source,
+        original_name="note.md",
+        extension=".md",
+        content_hash="abc123",
+        full_text="Full extracted text",
+    )
+    store = FakeReferenceStore()
+    embedder = FakeEmbedder()
+    item = {"type": "reference", "title": "Note", "summary": "Useful note", "url": ""}
+
+    first = save_reference(
+        store=store,
+        embedder=embedder,
+        item=item,
+        capture={},
+        source_name="drop.json",
+        source_document=source_document,
+    )
+    second = save_reference(
+        store=store,
+        embedder=embedder,
+        item=replace_source_title(item, "Note again"),
+        capture={},
+        source_name="drop-again.json",
+        source_document=source_document,
+    )
+
+    assert first["status"] == "created"
+    assert second["status"] == "deduped"
+    assert len(embedder.document_texts) == 1
+
+
+def test_save_reference_stores_source_document_metadata(tmp_path: Path) -> None:
+    source = tmp_path / "note.md"
+    source.write_text("hello", encoding="utf-8")
+    source_document = SourceDocument(
+        original_path=source,
+        original_name="note.md",
+        extension=".md",
+        content_hash="abc123",
+        full_text="Full extracted text",
+    )
+    store = FakeReferenceStore()
+
+    result = save_reference(
+        store=store,
+        embedder=FakeEmbedder(),
+        item={"type": "reference", "title": "Note", "summary": "Useful note", "url": ""},
+        capture={},
+        source_name="drop.json",
+        source_document=source_document,
+    )
+
+    record = store.records[int(result["task_id"])]
+    assert record.url is None
+    assert record.metadata["full_text"] == "Full extracted text"
+    assert record.metadata["source_path"] == str(source)
+    assert record.metadata["content_hash"] == "abc123"
+
+
 def test_hybrid_reference_search_fuses_keyword_and_semantic_results() -> None:
     store = FakeReferenceStore()
     embedder = FakeEmbedder()
@@ -87,6 +155,50 @@ def test_hybrid_reference_search_fuses_keyword_and_semantic_results() -> None:
 
     assert results[0].reference.title == "SQLite notes"
     assert results[0].score > 0
+
+
+def test_reference_cli_formats_agent_readable_markdown() -> None:
+    reference = ReferenceRecord(
+        id=42,
+        title="Inbox zero note",
+        summary="A useful summary about keeping inboxes clear.",
+        url="https://example.com/inbox-zero",
+        language="en",
+        source="drop.json",
+        captured_at="2026-05-24T10:00:00Z",
+        created_at="2026-05-24T10:01:00Z",
+        updated_at="2026-05-24T10:02:00Z",
+        tags=("productivity", "gtd"),
+        metadata={"file_path": "/tmp/references/inbox-zero.pdf"},
+    )
+
+    output = format_markdown_results(
+        query="What do I know about inbox zero?",
+        results=[
+            ReferenceSearchResult(
+                reference=reference,
+                score=0.12345,
+                snippet="Relevant inbox zero snippet.",
+            )
+        ],
+    )
+
+    assert "# Reference Search Results" in output
+    assert "Query: What do I know about inbox zero?" in output
+    assert "- id: 42" in output
+    assert "- score: 0.1235" in output
+    assert "- url: https://example.com/inbox-zero" in output
+    assert "- file: /tmp/references/inbox-zero.pdf" in output
+    assert "- tags: productivity, gtd" in output
+    assert "- snippet: Relevant inbox zero snippet." in output
+    assert "- summary: A useful summary about keeping inboxes clear." in output
+
+
+def test_reference_cli_formats_empty_results() -> None:
+    output = format_markdown_results(query="missing topic", results=[])
+
+    assert "No matching local references were found." in output
+    assert "Answer guidance: say that no strong local references were found." in output
 
 
 def test_sqlite_reference_store_keyword_and_list_tags() -> None:
@@ -109,6 +221,30 @@ def test_sqlite_reference_store_keyword_and_list_tags() -> None:
     assert created.id == 1
     assert results[0].reference.title == "Train booking"
     assert store.list_tags() == [("spain", 1), ("travel", 1)]
+
+
+def test_sqlite_reference_store_finds_by_content_hash_and_updates_metadata() -> None:
+    conn = sqlite3.connect(":memory:")
+    store = SQLiteReferenceStore(conn=conn, vector_dimension=4)
+    created = store.create_reference(
+        NewReference(
+            title="Local doc",
+            summary="Reference for a local document",
+            url=None,
+            captured_at="2026-05-24T10:00:00Z",
+            metadata={"content_hash": "abc123"},
+        ),
+        dedupe_key="content:local-doc",
+        embedding=[1.0, 0.0, 0.0, 0.0],
+    )
+
+    found = store.find_by_content_hash("abc123")
+    updated = store.update_metadata(created.id, {"content_hash": "abc123", "file_path": "/tmp/doc.md"})
+
+    assert found is not None
+    assert found.id == created.id
+    assert updated.metadata["file_path"] == "/tmp/doc.md"
+    assert store.get_reference(created.id).metadata["file_path"] == "/tmp/doc.md"
 
 
 def test_sqlite_reference_store_semantic_falls_back_without_sqlite_vec() -> None:
@@ -153,6 +289,7 @@ class _Config:
     def __init__(self, watch_dir: Path, processed_dir: Path) -> None:
         self.watch_dir = watch_dir
         self.processed_dir = processed_dir
+        self.references_dir = processed_dir.parent / "references"
 
 
 def test_process_inbox_saves_reference_without_google_task(tmp_path: Path) -> None:
@@ -197,3 +334,9 @@ def test_process_inbox_saves_reference_without_google_task(tmp_path: Path) -> No
     assert task_repo.created_tasks == []
     assert reference_store.records[1].title == "Example article"
     assert (processed_dir / "drop.json").exists()
+
+
+def replace_source_title(item: dict, title: str) -> dict:
+    updated = dict(item)
+    updated["title"] = title
+    return updated

@@ -54,6 +54,20 @@ class SQLiteReferenceStore:
         ).fetchone()
         return self._record_from_row(row) if row else None
 
+    def find_by_content_hash(self, content_hash: str) -> ReferenceRecord | None:
+        try:
+            row = self.conn.execute(
+                """
+                SELECT *
+                FROM reference_records
+                WHERE json_extract(metadata_json, '$.content_hash') = ?
+                """,
+                (content_hash,),
+            ).fetchone()
+        except sqlite3.OperationalError:
+            return self._find_by_content_hash_scan(content_hash)
+        return self._record_from_row(row) if row else None
+
     def create_reference(
         self,
         reference: NewReference,
@@ -101,6 +115,23 @@ class SQLiteReferenceStore:
     def get_reference(self, reference_id: int) -> ReferenceRecord | None:
         row = self.conn.execute("SELECT * FROM reference_records WHERE id = ?", (reference_id,)).fetchone()
         return self._record_from_row(row) if row else None
+
+    def update_metadata(self, reference_id: int, metadata: dict[str, Any]) -> ReferenceRecord:
+        now = _utc_now()
+        metadata_json = json.dumps(metadata, ensure_ascii=False, sort_keys=True)
+        with self.conn:
+            self.conn.execute(
+                """
+                UPDATE reference_records
+                SET metadata_json = ?, updated_at = ?
+                WHERE id = ?
+                """,
+                (metadata_json, now, reference_id),
+            )
+        updated = self.get_reference(reference_id)
+        if updated is None:
+            raise ValueError(f"reference not found: {reference_id}")
+        return updated
 
     def keyword_search(self, query: str, *, limit: int) -> list[ReferenceSearchResult]:
         match = _fts_match_query(query)
@@ -321,6 +352,14 @@ class SQLiteReferenceStore:
             """,
             (like, like, like, limit),
         ).fetchall()
+
+    def _find_by_content_hash_scan(self, content_hash: str) -> ReferenceRecord | None:
+        rows = self.conn.execute("SELECT * FROM reference_records").fetchall()
+        for row in rows:
+            metadata = json.loads(str(row["metadata_json"] or "{}"))
+            if isinstance(metadata, dict) and metadata.get("content_hash") == content_hash:
+                return self._record_from_row(row)
+        return None
 
     def _load_sqlite_vec(self) -> Any | None:
         try:

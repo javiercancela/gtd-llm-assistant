@@ -11,9 +11,10 @@ deduped Google Tasks entries or saved references, moves successful drops to
 2. `infrastructure.config.load_inbox_config` resolves watch, inbox, processed,
    and logs paths from env with current local defaults.
 3. `application.process_inbox_run.process_all_pending_captures` lists pending
-   `*.json` files, reads each capture, classifies it, publishes each task item
-   to Google Tasks, saves each English reference item to SQLite, then archives
-   the original file.
+   `*.json` files, reads each capture, prepares any `source_path` document
+   capture, classifies it, publishes each task item to Google Tasks, saves each
+   English reference item to SQLite, copies created source documents into
+   `references/`, then archives the original file.
 4. `adapters.icloud.json_reader` handles iCloud hydration and retry/copy
    fallback.
 5. `adapters.gemini` calls Gemini and parses JSON; `logging_classifier` writes
@@ -37,7 +38,8 @@ deduped Google Tasks entries or saved references, moves successful drops to
 
 ## Key Shapes
 
-- **Capture:** raw workflow JSON, usually `{text, text_es?, language?, url?, ...}`.
+- **Capture:** raw workflow JSON, usually `{text, text_es?, language?, url?, ...}`;
+  file captures use `{source_path, tags?}` and are expanded before classification.
 - **Classified item:** `{type, title, description, summary?, url?, tags?, subtasks?, existing_project_title?}`.
 - **Publish result:** `{status: created|deduped|updated, task_id, tasklist, type}`.
 - **Reference record:** `{id, title, summary, url?, tags, captured_at, metadata}`.
@@ -57,8 +59,8 @@ deduped Google Tasks entries or saved references, moves successful drops to
 
 - `GEMINI_API_KEY` is required for live Gemini calls.
 - `GTD_TASKLIST_PERSONAL|WORK|WAITING_FOR` override Google Tasks list IDs.
-- `GTD_WATCH_DIR`, `GTD_INBOX_DIR`, `GTD_PROCESSED_DIR`, and `GTD_LOGS_DIR`
-  override filesystem paths.
+- `GTD_WATCH_DIR`, `GTD_INBOX_DIR`, `GTD_PROCESSED_DIR`, `GTD_LOGS_DIR`, and
+  `GTD_REFERENCES_DIR` override filesystem paths.
 - `GTD_REFERENCE_DB` overrides the local SQLite reference database path.
 - Never commit credentials or tokens. Log files are JSON lines named
   `inbox_YYYY-MM-DD.log` and `gemini_YYYY-MM-DD.log`.
@@ -67,4 +69,6 @@ deduped Google Tasks entries or saved references, moves successful drops to
 
 - `uv run main` — run one pass over the watch folder.
 - `uv run gtd-references-mcp` — run the local stdio MCP server for references.
+- `uv run gtd-references-query "question" --limit 8 --format markdown` —
+  print local reference search evidence for Codex Local or direct terminal use.
 - `uv run pytest` — run the test suite.

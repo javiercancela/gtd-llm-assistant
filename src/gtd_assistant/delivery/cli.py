@@ -6,6 +6,7 @@ from gtd_assistant.adapters.gemini import MODEL_FLASH
 from gtd_assistant.adapters.gemini.logging_classifier import LoggingGeminiJsonClient
 from gtd_assistant.adapters.google_tasks.repository import GoogleTasksRepository
 from gtd_assistant.adapters.icloud.json_reader import IcloudJsonCaptureReader
+from gtd_assistant.adapters.local_documents import PandocDocumentTextExtractor
 from gtd_assistant.adapters.qwen_embedder import QwenReferenceEmbedder
 from gtd_assistant.adapters.sqlite_reference_store import SQLiteReferenceStore
 from gtd_assistant.application.process_inbox_run import (
@@ -34,6 +35,7 @@ def main() -> None:
             vector_dimension=reference_embedder.dimension,
         ),
         reference_embedder=reference_embedder,
+        document_text_extractor=PandocDocumentTextExtractor(),
     )
     process_all_pending_captures(config, deps)
 

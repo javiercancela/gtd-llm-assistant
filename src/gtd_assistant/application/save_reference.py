@@ -13,6 +13,7 @@ from gtd_assistant.domain.reference import (
     reference_dedupe_key,
     reference_embedding_text,
 )
+from gtd_assistant.application.prepare_capture import SourceDocument
 from gtd_assistant.ports.embedder import Embedder
 from gtd_assistant.ports.reference_store import ReferenceStore
 
@@ -27,13 +28,20 @@ def save_reference(
     capture: dict[str, Any],
     source_name: str,
     source_url: str | None = None,
+    source_document: SourceDocument | None = None,
 ) -> dict[str, str]:
     """Persist one classified reference and return a publish-shaped result."""
+    if source_document is not None:
+        existing = store.find_by_content_hash(source_document.content_hash)
+        if existing:
+            return _result("deduped", existing.id)
+
     reference = build_new_reference(
         item=item,
         capture=capture,
         source_name=source_name,
         source_url=source_url,
+        source_document=source_document,
     )
     dedupe_key = reference_dedupe_key(
         title=reference.title,
@@ -61,12 +69,23 @@ def build_new_reference(
     capture: dict[str, Any],
     source_name: str,
     source_url: str | None = None,
+    source_document: SourceDocument | None = None,
 ) -> NewReference:
     """Normalize a classified reference item into a storage object."""
     url = normalize_reference_url(str(item.get("url", "")).strip() or source_url)
     summary = str(item.get("summary", "")).strip()
     if not summary:
         summary = _description_without_url(str(item.get("description", "")).strip(), url=url)
+
+    metadata: dict[str, Any] = {"source_capture": source_name}
+    if source_document is not None:
+        metadata.update(
+            {
+                "full_text": source_document.full_text,
+                "source_path": str(source_document.original_path),
+                "content_hash": source_document.content_hash,
+            }
+        )
 
     return NewReference(
         title=str(item.get("title", "")).strip() or "Untitled reference",
@@ -76,7 +95,7 @@ def build_new_reference(
         source=source_name,
         captured_at=_captured_at(capture),
         tags=normalize_reference_tags(item.get("tags")),
-        metadata={"source_capture": source_name},
+        metadata=metadata,
     )
 
 

@@ -24,6 +24,7 @@ dev = [
 [project.scripts]
 main = "gtd_assistant.delivery.cli:main"
 gtd-references-mcp = "gtd_assistant.delivery.mcp_server:main"
+gtd-references-query = "gtd_assistant.delivery.reference_cli:main"
 
 [build-system]
 requires = ["setuptools>=68"]

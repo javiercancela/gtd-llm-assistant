@@ -22,6 +22,7 @@ class InboxConfig:
     inbox_dir: Path
     processed_dir: Path
     logs_dir: Path
+    references_dir: Path
 
 
 def load_inbox_config() -> InboxConfig:
@@ -30,11 +31,13 @@ def load_inbox_config() -> InboxConfig:
     inbox_dir = _path_from_env("GTD_INBOX_DIR", DEFAULT_INBOX_DIR)
     processed_dir = _path_from_env("GTD_PROCESSED_DIR", inbox_dir / "processed")
     logs_dir = _path_from_env("GTD_LOGS_DIR", inbox_dir / "logs")
+    references_dir = _path_from_env("GTD_REFERENCES_DIR", inbox_dir / "references")
     return InboxConfig(
         watch_dir=watch_dir,
         inbox_dir=inbox_dir,
         processed_dir=processed_dir,
         logs_dir=logs_dir,
+        references_dir=references_dir,
     )
 
 

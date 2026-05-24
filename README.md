@@ -43,6 +43,7 @@ Optional path overrides:
 - `GTD_INBOX_DIR`
 - `GTD_PROCESSED_DIR`
 - `GTD_LOGS_DIR`
+- `GTD_REFERENCES_DIR`
 - `GTD_REFERENCE_DB`
 
 Optional Google Tasks list overrides:
@@ -51,7 +52,12 @@ Optional Google Tasks list overrides:
 - `GTD_TASKLIST_WORK`
 - `GTD_TASKLIST_WAITING_FOR`
 
-English references are stored in `GTD_REFERENCE_DB`, not Google Tasks.
+English references are stored in `GTD_REFERENCE_DB`, not Google Tasks. Local
+source documents captured with `source_path` are copied to
+`GTD_REFERENCES_DIR`, which defaults to `GTD_INBOX_DIR/references`.
+
+For Finder and clipboard Shortcut setup, see
+[docs/macos-shortcuts.md](docs/macos-shortcuts.md).
 
 ## References MCP
 
@@ -63,6 +69,17 @@ uv run gtd-references-mcp
 
 It exposes tools to search, list, fetch, tag-browse, and manually add saved
 references.
+
+## Local Reference Query
+
+For Codex Local or a direct terminal query, search saved references without MCP:
+
+```bash
+uv run gtd-references-query "What do my references say about inbox zero?" --limit 8 --format markdown
+```
+
+The command prints Markdown evidence with titles, summaries, snippets, URLs,
+tags, and local document paths when available.
 
 To migrate a legacy Google Tasks reference list (pass the source list ID from
 `list_tasklists()`):

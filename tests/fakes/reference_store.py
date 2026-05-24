@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
+from dataclasses import replace
+from typing import Any
 
 from gtd_assistant.domain.reference import NewReference, ReferenceRecord, ReferenceSearchResult
 
@@ -20,6 +22,12 @@ class FakeReferenceStore:
     def find_by_dedupe_key(self, dedupe_key: str) -> ReferenceRecord | None:
         reference_id = self.dedupe_keys.get(dedupe_key)
         return self.records.get(reference_id) if reference_id else None
+
+    def find_by_content_hash(self, content_hash: str) -> ReferenceRecord | None:
+        for record in self.records.values():
+            if record.metadata.get("content_hash") == content_hash:
+                return record
+        return None
 
     def create_reference(
         self,
@@ -52,6 +60,18 @@ class FakeReferenceStore:
 
     def get_reference(self, reference_id: int) -> ReferenceRecord | None:
         return self.records.get(reference_id)
+
+    def update_metadata(self, reference_id: int, metadata: dict[str, Any]) -> ReferenceRecord:
+        record = self.records.get(reference_id)
+        if record is None:
+            raise ValueError(f"reference not found: {reference_id}")
+        updated = replace(
+            record,
+            metadata=dict(metadata),
+            updated_at=datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        )
+        self.records[reference_id] = updated
+        return updated
 
     def keyword_search(self, query: str, *, limit: int) -> list[ReferenceSearchResult]:
         results = []

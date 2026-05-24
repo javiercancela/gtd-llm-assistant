@@ -58,6 +58,8 @@ def ensure_schema(
           ON reference_records(captured_at);
         CREATE INDEX IF NOT EXISTS idx_tags_name
           ON tags(name);
+        CREATE INDEX IF NOT EXISTS idx_references_content_hash
+          ON reference_records(json_extract(metadata_json, '$.content_hash'));
         """
     )
     if vector_available:

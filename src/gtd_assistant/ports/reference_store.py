@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Protocol
+from typing import Any, Protocol
 
 from gtd_assistant.domain.reference import NewReference, ReferenceRecord, ReferenceSearchResult
 
@@ -16,6 +16,9 @@ class ReferenceStore(Protocol):
     def find_by_dedupe_key(self, dedupe_key: str) -> ReferenceRecord | None:
         """Return an existing reference with this dedupe key."""
 
+    def find_by_content_hash(self, content_hash: str) -> ReferenceRecord | None:
+        """Return an existing reference whose metadata.content_hash matches."""
+
     def create_reference(
         self,
         reference: NewReference,
@@ -27,6 +30,9 @@ class ReferenceStore(Protocol):
 
     def get_reference(self, reference_id: int) -> ReferenceRecord | None:
         """Return a full reference by ID."""
+
+    def update_metadata(self, reference_id: int, metadata: dict[str, Any]) -> ReferenceRecord:
+        """Replace reference metadata and return the updated record."""
 
     def keyword_search(self, query: str, *, limit: int) -> list[ReferenceSearchResult]:
         """Search references with SQLite FTS."""
