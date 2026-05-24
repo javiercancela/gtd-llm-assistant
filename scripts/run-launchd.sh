@@ -11,4 +11,4 @@ if [[ -f "$SECRETS_FILE" ]]; then
   set +a
 fi
 
-exec "$REPO_ROOT/.venv/bin/python" "$REPO_ROOT/src/main.py"
+exec "$REPO_ROOT/.venv/bin/python" -m gtd_assistant.delivery.cli

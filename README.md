@@ -13,16 +13,10 @@ points.
 uv run main
 ```
 
-Direct module entry point:
+Module entry point (same as `uv run main`):
 
 ```bash
 uv run python -m gtd_assistant.delivery.cli
-```
-
-The legacy direct script still works for launchd compatibility:
-
-```bash
-uv run python src/main.py
 ```
 
 ## Configuration

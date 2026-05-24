@@ -1,7 +1,7 @@
 # delivery/
 
 **Depends on:** application use cases plus concrete adapters/infrastructure.
-**Used by:** the `main` console script and `src/main.py` compatibility shim.
+**Used by:** the `main` console script (`gtd_assistant.delivery.cli:main`).
 
 ## Files
 
