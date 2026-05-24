@@ -1,0 +1,1 @@
+"""Google Tasks adapter package."""

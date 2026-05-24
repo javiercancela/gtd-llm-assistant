@@ -18,22 +18,18 @@ dev = [
 ]
 
 [project.scripts]
-main = "main:main"
+main = "gtd_assistant.delivery.cli:main"
 
 [build-system]
 requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
-
-[tool.setuptools]
-# Top-level modules that live directly under src/.
-py-modules = ["main", "inbox_json", "inbox_log", "icloud_download"]
 
 [tool.setuptools.package-dir]
 "" = "src"
 
 [tool.setuptools.packages.find]
 where = ["src"]
-include = ["adapters*", "application*", "domain*", "ports*", "services*"]
+include = ["gtd_assistant*"]
 
 [tool.pytest.ini_options]
 pythonpath = ["src"]

@@ -1,1 +1,1 @@
-"""Application use cases."""
+"""Compatibility package for old application imports."""

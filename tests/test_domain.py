@@ -1,7 +1,7 @@
-from domain.classified_item import normalize_spanish_item
-from domain.dedupe import IDEMPOTENCY_MARKER_PREFIX, dedupe_marker, notes_with_marker
-from domain.language import detect_language_from_capture
-from domain.routing import gtd_list_for
+from gtd_assistant.domain.classified_item import normalize_spanish_item
+from gtd_assistant.domain.dedupe import IDEMPOTENCY_MARKER_PREFIX, dedupe_marker, notes_with_marker
+from gtd_assistant.domain.language import detect_language_from_capture
+from gtd_assistant.domain.routing import gtd_list_for
 
 _TASKLISTS = {
     "personal": "PER",

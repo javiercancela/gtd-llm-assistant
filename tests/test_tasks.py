@@ -1,9 +1,9 @@
-from application.publish_classified_item import (
+from gtd_assistant.application.publish_classified_item import (
     PROJECT_FIRST_SUBTASK_TITLE,
     publish_classified_item,
 )
-from domain.dedupe import IDEMPOTENCY_MARKER_PREFIX, dedupe_marker
-from domain.routing import (
+from gtd_assistant.domain.dedupe import IDEMPOTENCY_MARKER_PREFIX, dedupe_marker
+from gtd_assistant.domain.routing import (
     BUCKET_PERSONAL,
     BUCKET_REFERENCE,
     BUCKET_WAITING_FOR,

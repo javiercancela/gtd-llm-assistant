@@ -1,15 +1,7 @@
-"""Port for JSON-oriented LLM completions.
+"""Compatibility shim for LLM port."""
 
-Application code depends on this protocol instead of a Gemini response shape.
-"""
+import sys
 
-from __future__ import annotations
+from gtd_assistant.ports import llm as _module
 
-from typing import Any, Protocol
-
-
-class JsonLlm(Protocol):
-    """LLM client that returns parsed JSON for a prompt."""
-
-    def complete_json(self, prompt: str) -> Any:
-        """Return the decoded JSON document produced for `prompt`."""
+sys.modules[__name__] = _module

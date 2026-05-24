@@ -1,1 +1,1 @@
-"""Port protocols implemented by adapters and fakes."""
+"""Compatibility package for old port imports."""

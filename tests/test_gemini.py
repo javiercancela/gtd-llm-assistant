@@ -1,7 +1,7 @@
-from adapters.gemini.response_parser import parse_json_from_gemini_payload
-from application.classify_capture import classify_capture
-from domain.classified_item import normalize_english_item
-from domain.language import detect_language_from_capture
+from gtd_assistant.adapters.gemini.response_parser import parse_json_from_gemini_payload
+from gtd_assistant.application.classify_capture import classify_capture
+from gtd_assistant.domain.classified_item import normalize_english_item
+from gtd_assistant.domain.language import detect_language_from_capture
 from fakes.llm import FakeJsonLlm
 from fakes.task_lists import FakeTaskListRepository
 

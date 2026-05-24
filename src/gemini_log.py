@@ -1,44 +1,7 @@
-"""Append-only Gemini prompt/response lines under the inbox logs directory."""
+"""Compatibility shim for the renamed Gemini exchange logger."""
 
-from __future__ import annotations
+import sys
 
-import json
-from datetime import datetime, timezone
-from pathlib import Path
-from typing import Any
+from gtd_assistant.infrastructure import gemini_exchange_log as _module
 
-
-def _response_text(response_payload: dict[str, Any]) -> str:
-    candidates = response_payload.get("candidates") or []
-    if not candidates:
-        return ""
-    parts = candidates[0].get("content", {}).get("parts") or []
-    if not parts:
-        return ""
-    return str(parts[0].get("text", "")).strip()
-
-
-def append_gemini_log(
-    logs_dir: Path,
-    *,
-    model: str,
-    prompt: str,
-    response_payload: dict[str, Any] | None = None,
-    error: str | None = None,
-) -> None:
-    logs_dir.mkdir(parents=True, exist_ok=True)
-    day = datetime.now(timezone.utc).strftime("%Y-%m-%d")
-    log_path = logs_dir / f"gemini_{day}.log"
-    ts = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
-    entry: dict[str, str] = {
-        "ts": ts,
-        "model": model,
-        "prompt": prompt,
-    }
-    if response_payload is not None:
-        entry["answer"] = _response_text(response_payload)
-    if error is not None:
-        entry["error"] = error
-    line = json.dumps(entry, ensure_ascii=False)
-    with log_path.open("a", encoding="utf-8") as fh:
-        fh.write(f"{line}\n")
+sys.modules[__name__] = _module

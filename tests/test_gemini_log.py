@@ -1,7 +1,7 @@
 import json
 from pathlib import Path
 
-from gemini_log import append_gemini_log
+from gtd_assistant.infrastructure.gemini_exchange_log import append_gemini_log
 
 
 def test_append_gemini_log_success(tmp_path: Path) -> None:

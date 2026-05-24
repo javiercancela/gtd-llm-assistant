@@ -1,4 +1,4 @@
-from adapters.gcloud_tasks import _build_task_body
+from gtd_assistant.adapters.google_tasks.repository import _build_task_body
 
 
 def test_build_task_body_includes_links_when_url_present() -> None:
