@@ -10,6 +10,8 @@ import time
 from collections.abc import Callable
 from pathlib import Path
 
+from icloud_download import ensure_icloud_file_local
+
 # macOS CloudDocs may return EAGAIN while a file is still downloading.
 _ERRNO_RESOURCE_DEADLOCK = 11
 _COPY_TIMEOUT_SECONDS = 10.0
@@ -52,6 +54,11 @@ def load_json_file(
     delay_seconds = 2
 
     for attempt in range(1, max_attempts + 1):
+        ensure_icloud_file_local(
+            path,
+            max_wait_seconds=min(delay_seconds * 5, 120.0),
+            on_waiting=on_waiting_for_sync,
+        )
         try:
             return _read_json_text(path)
         except OSError as exc:

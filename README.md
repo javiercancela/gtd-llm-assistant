@@ -100,7 +100,7 @@ Spanish payloads (`text_es` present) still use a single `CLASSIFY_SPANISH_PROMPT
 
 ## iCloud workflow drops
 
-The watch folder lives under iCloud Drive. If a JSON file is still downloading, macOS may return **Resource deadlock avoided** (`errno 11`) when the job reads it. `src/inbox_json.py` retries with backoff (logging each attempt), then tries a timed local copy; failed files stay in the watch folder for the next run. If you see repeated `waiting for iCloud sync` lines in `inbox_*.log`, that drop was not ready yet—re-run after sync finishes or touch the watch folder again.
+The watch folder lives under iCloud Drive. Before each read, `src/icloud_download.py` calls macOS `startDownloadingUbiquitousItem` and polls until the file’s iCloud download status is **Current** or **Downloaded** (requires `pyobjc-framework-Cocoa` on macOS). If a JSON file is still not local, reads may return **Resource deadlock avoided** (`errno 11`); `src/inbox_json.py` then retries with backoff (logging each attempt) and tries a timed local copy. Failed files stay in the watch folder for the next run. If you see repeated `waiting for iCloud sync` or `icloud downloading` lines in `inbox_*.log`, that drop was not ready yet—re-run after sync finishes or touch the watch folder again.
 
 ## launchd
 

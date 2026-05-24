@@ -221,3 +221,4 @@ client*.json
 .token.json
 .config/
 .DS_Store
+.antigravitycli/
