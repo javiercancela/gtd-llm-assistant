@@ -33,7 +33,7 @@ py-modules = ["main", "inbox_json", "inbox_log", "icloud_download"]
 
 [tool.setuptools.packages.find]
 where = ["src"]
-include = ["adapters*", "services*"]
+include = ["adapters*", "application*", "domain*", "ports*", "services*"]
 
 [tool.pytest.ini_options]
 pythonpath = ["src"]
