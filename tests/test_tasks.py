@@ -101,6 +101,23 @@ def test_spanish_task_routes_to_personal() -> None:
 
     assert result["status"] == "created"
     assert repo.created_tasks[0]["tasklist"] == "PER"
+    assert repo.created_tasks[0]["notes"] is None
+
+
+def test_publish_classified_item_dedupes_empty_description_by_title() -> None:
+    repo = FakeTaskListRepository(
+        tasks={"PER": [{"id": "existing-1", "title": "Leche", "notes": None}]}
+    )
+
+    result = _publish(
+        repo,
+        item={"type": "task", "title": "Leche", "description": ""},
+        language="es",
+    )
+
+    assert result["status"] == "deduped"
+    assert result["task_id"] == "existing-1"
+    assert repo.created_tasks == []
 
 
 def test_create_project_adds_first_subtask_when_no_subtasks() -> None:
@@ -115,7 +132,7 @@ def test_create_project_adds_first_subtask_when_no_subtasks() -> None:
     assert result["type"] == "project"
     assert result["task_id"] == "project-1"
     assert repo.created_projects[0]["tasklist"] == "WRK"
-    assert IDEMPOTENCY_MARKER_PREFIX in repo.created_projects[0]["notes"]
+    assert repo.created_projects[0]["notes"] is None
     assert repo.added_subtasks[0]["project_id"] == "project-1"
     assert repo.added_subtasks[0]["title"] == PROJECT_FIRST_SUBTASK_TITLE
 

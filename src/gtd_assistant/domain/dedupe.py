@@ -25,7 +25,7 @@ def dedupe_marker(source_name: str, item: dict[str, str]) -> str:
 
 
 def notes_with_marker(notes: str, marker: str) -> str:
-    """Append the marker line to existing notes (or use it as the only line)."""
+    """Append the marker line to existing notes; skip notes when there is no content."""
     if notes:
         return f"{notes}\n\n{IDEMPOTENCY_MARKER_PREFIX}{marker}"
-    return f"{IDEMPOTENCY_MARKER_PREFIX}{marker}"
+    return ""

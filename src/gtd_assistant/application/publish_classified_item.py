@@ -32,7 +32,13 @@ def publish_classified_item(
     tasklist = gtd_list_for(item_type, language, tasklists=tasklists)
     marker = dedupe_marker(source_name, item)
 
-    existing = _find_existing_task(repository, tasklist=tasklist, marker=marker)
+    existing = _find_existing_task(
+        repository,
+        tasklist=tasklist,
+        marker=marker,
+        title=title,
+        description=description,
+    )
     if existing:
         return {
             "status": "deduped",
@@ -41,7 +47,7 @@ def publish_classified_item(
             "type": item_type,
         }
 
-    notes = notes_with_marker(description, marker)
+    notes = notes_with_marker(description, marker) or None
     if item_type == "project":
         return _publish_project(
             repository=repository,
@@ -67,11 +73,24 @@ def _find_existing_task(
     *,
     tasklist: str,
     marker: str,
+    title: str = "",
+    description: str = "",
 ) -> dict[str, Any] | None:
     marker_text = f"{IDEMPOTENCY_MARKER_PREFIX}{marker}"
     for task in repository.list_tasks(tasklist):
-        notes = str(task.get("notes", ""))
+        notes = str(task.get("notes", "") or "")
         if marker_text in notes:
+            return task
+
+    if description.strip() or not title.strip():
+        return None
+
+    normalized_title = title.strip()
+    for task in repository.list_tasks(tasklist):
+        if str(task.get("title", "")).strip() != normalized_title:
+            continue
+        notes = str(task.get("notes", "") or "").strip()
+        if not notes or notes == marker_text:
             return task
     return None
 
@@ -124,7 +143,7 @@ def _publish_project(
     repository: TaskListRepository,
     tasklist: str,
     title: str,
-    notes: str,
+    notes: str | None,
     url: str | None,
     item: dict[str, Any],
     item_type: str,

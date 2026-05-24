@@ -64,5 +64,5 @@ def test_notes_with_marker_appends_when_notes_present() -> None:
     assert out == f"hello\n\n{IDEMPOTENCY_MARKER_PREFIX}abc"
 
 
-def test_notes_with_marker_alone_when_notes_empty() -> None:
-    assert notes_with_marker("", "abc") == f"{IDEMPOTENCY_MARKER_PREFIX}abc"
+def test_notes_with_marker_empty_when_notes_empty() -> None:
+    assert notes_with_marker("", "abc") == ""
