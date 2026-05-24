@@ -7,6 +7,8 @@ These were chosen before the plan was written and the rest of the document assum
 - **Content depth:** URL + LLM-generated summary only. No page fetching, no archival.
 - **Retrieval:** Hybrid — keyword (SQLite FTS5) and semantic (embeddings) exposed as separate MCP tools, plus one hybrid tool that fuses them.
 - **Access surface:** Local MCP server over stdio. Phone access happens via remote desktop into the Mac, so no networking, auth, or remote transport needs to be designed.
+- **Language scope:** English references only. The current pipeline already routes Spanish captures (including `referencia`) to the Personal tasklist as tasks, so the new English-only store doesn't lose anything; it just makes that constraint explicit.
+- **Embedder:** `Qwen/Qwen3-Embedding-0.6B` via `sentence-transformers`, in-process. No daemon, no API key, no second runtime.
 - **Google Tasks Reference list:** Replaced. New captures stop publishing references to Google Tasks. A one-shot migration script imports the existing Reference list into the new store.
 
 ## 1. What the system has to do
@@ -52,17 +54,49 @@ Unique constraint: `url` when non-null, to prevent duplicate captures of the sam
 
 ## 3. Embeddings
 
-One port, two adapters:
+In-process inference via `sentence-transformers`. No daemon, no separate inference engine, no API key. One adapter, one model, hard-coded.
 
-- `Embedder` port: `embed(texts: list[str]) -> list[list[float]]` plus a `dimension` property.
-- Default adapter: **Gemini** `text-embedding-004` (768d). Uses the existing `GEMINI_API_KEY`, so no new credentials. Batches of up to 100.
-- Optional adapter: **Ollama** `nomic-embed-text` (768d) for fully-offline mode. Same dimension, so the schema doesn't change.
+**Model:** `Qwen/Qwen3-Embedding-0.6B`. 1024d native. Apache 2.0. ~1.2GB fp32 / ~600MB fp16 on disk. Top of MTEB English retrieval at the ≤1B-param tier, which is why it's worth the dep weight versus a smaller `bge`-class model.
 
-Selected via `GTD_EMBEDDER=gemini|ollama` (default `gemini`).
+**Instruct-tuned — encoding is asymmetric.** Qwen3-Embedding expects an instruction prefix on the *query side* and no prefix on the *document side*. Mixing this up silently degrades retrieval quality, so the port and adapter make the asymmetry explicit rather than hiding it behind a flag.
 
-What gets embedded per reference: `title + "\n\n" + summary + "\n\n" + url`. Embedding only happens on insert and on explicit re-embed; queries embed the query string once.
+`Embedder` port:
 
-**Dimension is locked at first insert.** Switching models means re-embedding everything. The migration script supports `--reembed-all`.
+```python
+class Embedder(Protocol):
+    dimension: int
+    def embed_documents(self, texts: list[str]) -> list[list[float]]: ...
+    def embed_query(self, text: str) -> list[float]: ...
+```
+
+The Qwen adapter implements them as:
+
+```python
+# Hard-coded; not a config knob.
+QWEN_QUERY_INSTRUCTION = (
+    "Instruct: Given a search query, retrieve relevant saved references that match the query\n"
+    "Query: "
+)
+
+def embed_documents(texts):
+    return model.encode(texts, normalize_embeddings=True).tolist()
+
+def embed_query(text):
+    return model.encode(text, prompt=QWEN_QUERY_INSTRUCTION,
+                        normalize_embeddings=True).tolist()
+```
+
+(`normalize_embeddings=True` so we can use dot-product as cosine, which sqlite-vec handles natively.)
+
+What gets embedded per reference (document side): `title + "\n\n" + summary + "\n\n" + url`.
+
+**Apple Silicon loading:** `SentenceTransformer("Qwen/Qwen3-Embedding-0.6B", device="mps", model_kwargs={"torch_dtype": torch.float16})`. First call pays ~5–15s of import + model load; subsequent calls are ~50–100ms.
+
+**Dimension is locked at first insert.** A separate `reembed_all` CLI exists for one-shot model swaps; in v1 it's defensive only.
+
+**Risk to validate up front:** sentence-transformers cold-start adds noticeably to each `launchd` inbox cycle. If it bites, two cheap follow-ups exist (don't build them yet): (a) skip embedding at capture time and run a backfill job, or (b) move the inbox from launchd-each-run to a long-lived watch process. Default: accept the cold-start.
+
+**Dependency cost:** `sentence-transformers` pulls in `torch` and `transformers`, ~500MB+ installed. Worth knowing about; not a blocker for a personal tool on a Mac with disk to spare.
 
 ## 4. New code layout
 
@@ -82,9 +116,7 @@ src/gtd_assistant/
     sqlite_reference_store/
       schema.py                  # CREATE TABLE/INDEX/FTS/VEC + migrations
       repository.py              # ReferenceStore impl
-    embedders/
-      gemini.py                  # Embedder impl over google-genai
-      ollama.py                  # Embedder impl over local Ollama HTTP
+    qwen_embedder.py             # Embedder impl over sentence-transformers + Qwen3-Embedding-0.6B
   infrastructure/
     reference_config.py          # paths, embedder selection, dimension
   delivery/
@@ -143,11 +175,9 @@ New env vars (added to `config/env.example`):
 
 ```
 GTD_REFERENCE_DB=~/.local/share/gtd-llm-assistant/references.sqlite3
-GTD_EMBEDDER=gemini                # gemini | ollama
-GEMINI_EMBED_MODEL=text-embedding-004
-OLLAMA_HOST=http://localhost:11434
-OLLAMA_EMBED_MODEL=nomic-embed-text
 ```
+
+That's the only one. The model name and query instruction are hard-coded constants in the adapter — they're not user choices, and a config knob would only invite drift between code and data (different instructions silently produce worse retrieval).
 
 `GTD_TASKLIST_REFERENCE` stays defined so the migration script can read it, but the runtime path no longer uses it.
 
@@ -159,7 +189,7 @@ Hex layers already make this clean:
 - `application/save_reference.py` — tests against a `FakeReferenceStore` and a `FakeEmbedder` (returns deterministic vectors).
 - `application/search_references.py` — tests that hybrid fusion behaves correctly with synthetic ranked lists.
 - `adapters/sqlite_reference_store/` — integration tests against `:memory:` SQLite with sqlite-vec loaded; verifies schema, FTS, vector top-k, triggers/sync.
-- `adapters/embedders/gemini.py` — not tested live in CI; covered by a contract test that the adapter conforms to `Embedder`.
+- `adapters/qwen_embedder.py` — not exercised in CI (model is too large to download per run). A contract test asserts the adapter conforms to `Embedder` and the two methods produce different vectors for the same input (proves the query instruction is actually being applied). Run locally, not in any CI loop.
 - `delivery/mcp_server.py` — one smoke test that boots the server in-process and round-trips a `search_references` call against a populated `:memory:` store.
 
 ## 10. Phased implementation
@@ -174,9 +204,9 @@ Each step has a verify check so the build can loop without me asking. Order is c
    Implement schema, repository, FTS5. Skip vec table in this step.
    *Verify:* in-memory integration test inserts 3 rows, FTS query returns them ranked.
 
-3. **`save_reference` use case + capture-path wiring + Gemini embedder + vec table.**
-   Add embedder, vec0 table, semantic search. Hook into `process_one_capture` so live captures classified as reference write to SQLite instead of Google Tasks.
-   *Verify:* run the inbox over a fixture capture marked as reference; the row exists in the DB with a non-empty embedding and no Google Tasks call is made.
+3. **`save_reference` use case + capture-path wiring + Qwen embedder + vec table.**
+   Add the sentence-transformers Qwen3 embedder with asymmetric `embed_documents` / `embed_query`, the `vec0` table sized to 1024d, and semantic search. Hook into `process_one_capture` so live captures classified as reference write to SQLite instead of Google Tasks.
+   *Verify:* run the inbox over a fixture capture marked as reference; the row exists in the DB with a 1024d embedding and no Google Tasks call is made. Separately, assert `embed_documents("foo")` and `embed_query("foo")` produce different vectors.
 
 4. **Migration script.**
    Build and run with `--dry-run`.

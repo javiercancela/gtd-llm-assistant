@@ -4,6 +4,10 @@ Watches a Shortcuts / iCloud workflow folder for `*.json` drops, classifies
 each capture with Gemini, creates deduped Google Tasks entries, moves completed
 files to `processed/`, and writes daily JSON-line logs.
 
+English references are saved to a local SQLite reference store instead of
+Google Tasks. The store supports keyword and semantic search through a local
+stdio MCP server.
+
 See [ARCHITECTURE.md](ARCHITECTURE.md) for the run path, layer map, and edit
 points.
 
@@ -39,6 +43,7 @@ Optional path overrides:
 - `GTD_INBOX_DIR`
 - `GTD_PROCESSED_DIR`
 - `GTD_LOGS_DIR`
+- `GTD_REFERENCE_DB`
 
 Optional Google Tasks list overrides:
 
@@ -46,6 +51,27 @@ Optional Google Tasks list overrides:
 - `GTD_TASKLIST_WORK`
 - `GTD_TASKLIST_WAITING_FOR`
 - `GTD_TASKLIST_REFERENCE`
+
+`GTD_TASKLIST_REFERENCE` is only used by the one-shot migration script; new
+English references are stored in `GTD_REFERENCE_DB`.
+
+## References MCP
+
+Run the local MCP server with:
+
+```bash
+uv run gtd-references-mcp
+```
+
+It exposes tools to search, list, fetch, tag-browse, and manually add saved
+references.
+
+To migrate the old Google Tasks Reference list:
+
+```bash
+uv run python scripts/migrate_references_from_gtasks.py --dry-run
+uv run python scripts/migrate_references_from_gtasks.py
+```
 
 ## Google Tasks OAuth
 

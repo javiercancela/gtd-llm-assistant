@@ -7,6 +7,7 @@
 
 - `config.py` — env-backed inbox paths.
 - `gtd_task_lists.py` — env-backed Google Tasks list IDs.
+- `reference_config.py` — env-backed SQLite reference database path.
 - `inbox_run_log.py` — daily run log and `DailyRunLogger`.
 - `gemini_exchange_log.py` — daily Gemini prompt/answer log.
 

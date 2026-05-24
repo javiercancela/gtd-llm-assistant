@@ -6,6 +6,7 @@
 ## Files
 
 - `cli.py` — resolves config, constructs real dependencies, and starts one inbox run.
+- `mcp_server.py` — runs the stdio MCP server for searching and adding references.
 
 ## Invariants
 

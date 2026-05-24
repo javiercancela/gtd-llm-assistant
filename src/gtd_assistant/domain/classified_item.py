@@ -54,6 +54,9 @@ def _normalize_reference(item: dict[str, Any]) -> dict[str, Any]:
     title = str(item.get("title", "")).strip()
     summary = str(item.get("summary", "")).strip()
     url = str(item.get("url", "")).strip()
+    tags = item.get("tags") or []
+    if not isinstance(tags, list):
+        tags = []
 
     description = summary
     if url:
@@ -62,7 +65,9 @@ def _normalize_reference(item: dict[str, Any]) -> dict[str, Any]:
     normalized: dict[str, Any] = {
         "type": ITEM_KIND_REFERENCE,
         "title": title,
+        "summary": summary,
         "description": description,
+        "tags": [str(tag).strip() for tag in tags if str(tag).strip()],
     }
     if url:
         normalized["url"] = url

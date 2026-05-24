@@ -83,6 +83,7 @@ For each reference item:
 - title: short identifying title (max 8 words)—how you would find this later in a list
 - summary: 1-3 sentences capturing the essence; do not copy the entire input verbatim unless the input is already short
 - url: extract a URL from the input if present; otherwise use an empty string ""; never fabricate URLs
+- tags: 2-5 short lowercase tags useful for browsing later; use [] only when no useful tag fits
 
 If the input contains multiple distinct references, return a JSON array with one object per reference.
 If there is a single reference, return either a single object or an array with one object.
@@ -94,7 +95,8 @@ Schema for each item:
   "type": "reference",
   "title": "short identifying title (max 8 words)",
   "summary": "1-3 sentence summary of the content",
-  "url": "URL string or empty string if none in input"
+  "url": "URL string or empty string if none in input",
+  "tags": ["short-tag", "another-tag"]
 }
 
 Input:

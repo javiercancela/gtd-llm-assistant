@@ -18,6 +18,8 @@ network, no SDK imports.
   the tasklist ID for a classified item.
 - `dedupe.py` — `dedupe_marker(source_name, item)` and
   `notes_with_marker(notes, marker)` plus the `inbox_hash:` prefix.
+- `reference.py` — saved-reference dataclasses, tag normalization, URL/content
+  dedupe keys, and embedding text construction.
 
 ## Invariants
 

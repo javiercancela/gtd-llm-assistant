@@ -14,8 +14,12 @@ from typing import Protocol
 
 from gtd_assistant.application.classify_capture import classify_capture
 from gtd_assistant.application.publish_classified_item import publish_classified_item
+from gtd_assistant.application.save_reference import save_reference
+from gtd_assistant.domain.item_kind import ITEM_KIND_REFERENCE
 from gtd_assistant.ports.capture_reader import CaptureReader
+from gtd_assistant.ports.embedder import Embedder
 from gtd_assistant.ports.llm import JsonLlm
+from gtd_assistant.ports.reference_store import ReferenceStore
 from gtd_assistant.ports.run_logger import RunLogger
 from gtd_assistant.ports.task_lists import TaskListRepository
 
@@ -36,6 +40,8 @@ class InboxRunDependencies:
     task_repository: TaskListRepository
     tasklists: dict[str, str]
     logger: RunLogger
+    reference_store: ReferenceStore | None = None
+    reference_embedder: Embedder | None = None
 
 
 def process_all_pending_captures(config: InboxRunConfig, deps: InboxRunDependencies) -> None:
@@ -81,14 +87,26 @@ def process_one_capture(
 
         source_url = str(capture.get("url", "")).strip() or None
         for item in items:
-            task_result = publish_classified_item(
-                repository=deps.task_repository,
-                tasklists=deps.tasklists,
-                source_name=path.name,
-                item=item,
-                language=language,
-                source_url=source_url,
-            )
+            if item.get("type") == ITEM_KIND_REFERENCE and language != "es":
+                if deps.reference_store is None or deps.reference_embedder is None:
+                    raise RuntimeError("reference store and embedder are required for references")
+                task_result = save_reference(
+                    store=deps.reference_store,
+                    embedder=deps.reference_embedder,
+                    source_name=path.name,
+                    item=item,
+                    capture=capture,
+                    source_url=source_url,
+                )
+            else:
+                task_result = publish_classified_item(
+                    repository=deps.task_repository,
+                    tasklists=deps.tasklists,
+                    source_name=path.name,
+                    item=item,
+                    language=language,
+                    source_url=source_url,
+                )
             deps.logger.ok(
                 f"task {task_result['status']} file={path.name} "
                 f"type={task_result['type']} task_id={task_result['task_id']} "

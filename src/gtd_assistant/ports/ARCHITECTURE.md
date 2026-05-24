@@ -7,6 +7,8 @@
 
 - `llm.py` — `JsonLlm.complete_json(prompt)`.
 - `task_lists.py` — narrow Google Tasks repository operations.
+- `reference_store.py` — storage, listing, and search operations for references.
+- `embedder.py` — asymmetric document/query embedding operations.
 - `capture_reader.py` — reads one capture payload from a path.
 - `run_logger.py` — run log levels used by inbox processing.
 
