@@ -5,8 +5,8 @@ each capture with Gemini, creates deduped Google Tasks entries, moves completed
 files to `processed/`, and writes daily JSON-line logs.
 
 English references are saved to a local SQLite reference store instead of
-Google Tasks. The store supports keyword and semantic search through a local
-stdio MCP server.
+Google Tasks. The store supports keyword and semantic search through the
+`gtd-references-query` CLI.
 
 See [ARCHITECTURE.md](ARCHITECTURE.md) for the run path, layer map, and edit
 points.
@@ -59,27 +59,20 @@ source documents captured with `source_path` are copied to
 For Finder and clipboard Shortcut setup, see
 [docs/macos-shortcuts.md](docs/macos-shortcuts.md).
 
-## References MCP
-
-Run the local MCP server with:
-
-```bash
-uv run gtd-references-mcp
-```
-
-It exposes tools to search, list, fetch, tag-browse, and manually add saved
-references.
-
 ## Local Reference Query
 
-For Codex Local or a direct terminal query, search saved references without MCP:
+Search saved references from Codex Local or a direct terminal:
 
 ```bash
-uv run gtd-references-query "What do my references say about inbox zero?" --limit 8 --format markdown
+uv run gtd-references-query "What do my references say about inbox zero?" --limit 8
 ```
 
 The command prints Markdown evidence with titles, summaries, snippets, URLs,
 tags, and local document paths when available.
+
+Pass `--keyword-only` to skip the Qwen3 embedding model load and run pure FTS
+keyword search — useful for fast lookups when an interactive agent does not
+need semantic recall.
 
 To migrate a legacy Google Tasks reference list (pass the source list ID from
 `list_tasklists()`):

@@ -31,7 +31,7 @@ Out of scope for v1:
 
 - PDF extraction.
 - Chunking one document into multiple references.
-- MCP file-ingestion tools.
+- File-ingestion tools exposed through any external query surface.
 - Editing or deleting copied source documents.
 - Automatically watching folders such as `~/Downloads`.
 - Any in-repo automation that installs macOS Shortcuts for the user.
@@ -277,7 +277,7 @@ Change `src/gtd_assistant/delivery/cli.py`:
 - Instantiate `PandocDocumentTextExtractor`.
 - Pass it into `InboxRunDependencies`.
 
-Do not wire anything into the MCP server for v1.
+Do not extend the query CLI surface for v1; copied source documents are read from disk by the consumer using the `file_path` returned in the Markdown evidence.
 
 ### 4.9 Shortcuts documentation
 
@@ -487,7 +487,7 @@ Manual checks:
 - Add the same file again; confirm it dedupes and does not create another copied artifact.
 - Add a `.docx`; confirm pandoc extraction produces useful markdown and metadata contains full text.
 - Paste text from clipboard through the Shortcut; confirm it behaves like a normal text capture.
-- Search/list references through the existing MCP tools and confirm metadata is visible on `get_reference`.
+- Search references through `gtd-references-query` and confirm the Markdown evidence surfaces `file` and `source` for the copied document.
 
 ## 6. Risks and decisions to watch
 

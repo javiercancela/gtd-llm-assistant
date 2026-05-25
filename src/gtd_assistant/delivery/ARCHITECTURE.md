@@ -6,7 +6,9 @@
 ## Files
 
 - `cli.py` — resolves config, constructs real dependencies, and starts one inbox run.
-- `mcp_server.py` — runs the stdio MCP server for searching and adding references.
+- `reference_cli.py` — `gtd-references-query` command: prints Markdown evidence
+  for a query against the local SQLite reference store. Supports hybrid
+  (FTS + semantic) search by default and `--keyword-only` for fast lookups.
 
 ## Invariants
 

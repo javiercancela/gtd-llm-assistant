@@ -383,9 +383,39 @@ def _utc_now() -> str:
     return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
+_FTS_MIN_TOKEN_LEN = 3
+
+# Stop words filtered out before building the FTS MATCH expression so common
+# question-shaped tokens like "what", "the", "is", "de", "para" do not dilute
+# BM25 ranking with prefix-OR noise.
+_FTS_STOP_WORDS = frozenset({
+    # English
+    "a", "about", "an", "and", "are", "as", "at", "be", "been", "being",
+    "but", "by", "can", "could", "did", "do", "does", "doing", "done",
+    "for", "from", "had", "has", "have", "having", "how", "i", "if", "in",
+    "into", "is", "it", "its", "me", "my", "of", "on", "or", "should",
+    "some", "such", "that", "the", "their", "them", "then", "there",
+    "these", "they", "this", "those", "to", "was", "we", "were", "what",
+    "when", "where", "which", "who", "whom", "why", "will", "with",
+    "would", "you", "your",
+    # Spanish
+    "al", "como", "con", "cual", "cuando", "de", "del", "donde", "el", "en",
+    "es", "esta", "este", "la", "las", "lo", "los", "mi", "mis", "no", "o",
+    "para", "por", "que", "quien", "se", "si", "su", "sus", "te", "tu", "un",
+    "una", "unas", "unos", "y", "ya", "yo",
+})
+
+
 def _fts_match_query(query: str) -> str:
     tokens = re.findall(r"[A-Za-z0-9_]+", query.lower())
-    return " OR ".join(f"{token}*" for token in tokens)
+    meaningful = [
+        token for token in tokens
+        if len(token) >= _FTS_MIN_TOKEN_LEN and token not in _FTS_STOP_WORDS
+    ]
+    # If filtering removed every token (very short or all stop words), fall
+    # back to the raw token list so we still return something for the FTS leg.
+    chosen = meaningful or tokens
+    return " OR ".join(f"{token}*" for token in chosen)
 
 
 def _cosine(left: list[float], right: list[float]) -> float:

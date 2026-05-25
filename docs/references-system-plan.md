@@ -1,12 +1,19 @@
-# Plan: First-class reference store with LLM access via MCP
+# Plan: First-class reference store with local CLI access
+
+> Status note (post-implementation): the original plan exposed retrieval through a
+> local stdio MCP server. That surface was removed; the system now exposes a single
+> `gtd-references-query` CLI command (see `src/gtd_assistant/delivery/reference_cli.py`).
+> The store, embedder, hybrid fusion, and migration script described below are still
+> the live design. MCP-specific sections have been struck or rewritten to reflect the
+> CLI surface.
 
 ## 0. Decisions already settled
 
 These were chosen before the plan was written and the rest of the document assumes them:
 
 - **Content depth:** URL + LLM-generated summary only. No page fetching, no archival.
-- **Retrieval:** Hybrid — keyword (SQLite FTS5) and semantic (embeddings) exposed as separate MCP tools, plus one hybrid tool that fuses them.
-- **Access surface:** Local MCP server over stdio. Phone access happens via remote desktop into the Mac, so no networking, auth, or remote transport needs to be designed.
+- **Retrieval:** Hybrid — keyword (SQLite FTS5) and semantic (embeddings) fused via Reciprocal Rank Fusion. Both modes are reachable through the local CLI; `--keyword-only` exposes the FTS path on its own.
+- **Access surface:** Single local CLI (`gtd-references-query`) that prints Markdown evidence. Phone access happens via remote desktop into the Mac, so no networking, auth, or remote transport needs to be designed.
 - **Language scope:** English references only. The current pipeline already routes Spanish captures (including `referencia`) to the Personal tasklist as tasks, so the new English-only store doesn't lose anything; it just makes that constraint explicit.
 - **Embedder:** `Qwen/Qwen3-Embedding-0.6B` via `sentence-transformers`, in-process. No daemon, no API key, no second runtime.
 - **Google Tasks Reference list:** Replaced. New captures stop publishing references to Google Tasks. A one-shot migration script imports the existing Reference list into the new store.
@@ -15,7 +22,7 @@ These were chosen before the plan was written and the rest of the document assum
 
 Capture-time path: when the inbox pipeline classifies an item as `reference`, the LLM already produces `{title, summary, url}`. Today that gets turned into a Google Tasks entry. After this change, it gets written to a local SQLite database with an embedding, and the Reference tasklist is left alone.
 
-Query-time path: an MCP server runs locally and exposes tools to search, list, and fetch references. Claude Desktop, Claude Code, and Codex CLI all support stdio MCP servers, so the same server works in all three.
+Query-time path: a local CLI (`gtd-references-query`) runs hybrid keyword + semantic search against the SQLite store and prints Markdown evidence the agent can read directly. Codex Local invokes it as a subprocess; the same command works from a terminal.
 
 ## 2. Storage
 
@@ -120,30 +127,30 @@ src/gtd_assistant/
   infrastructure/
     reference_config.py          # paths, embedder selection, dimension
   delivery/
-    mcp_server.py                # stdio MCP server entry point (separate console script)
+    reference_cli.py             # gtd-references-query console script
 ```
 
 The existing `application/publish_classified_item.py` keeps doing what it does for tasks, projects, and waiting-for. For `reference`, it delegates to `save_reference` instead of the Google Tasks path.
 
-## 5. MCP server
+## 5. Query CLI
 
-Uses the official `mcp` Python SDK (`pip install mcp`) with stdio transport. Registered as a `[project.scripts]` entry point: `gtd-references-mcp = "gtd_assistant.delivery.mcp_server:main"`. Users wire it into Claude Desktop, Claude Code, and Codex CLI by pointing their MCP config at that command.
+Registered as a `[project.scripts]` entry point: `gtd-references-query = "gtd_assistant.delivery.reference_cli:main"`. Codex Local and direct terminal users invoke it as a subprocess.
 
-Tools exposed (intentionally small surface):
+Usage:
 
-| Tool | Args | Returns |
-|---|---|---|
-| `search_references` | `query: str, limit: int = 10` | hybrid results (RRF fusion of FTS + vector) |
-| `search_references_keyword` | `query: str, limit: int = 10` | FTS5 match results with snippets |
-| `search_references_semantic` | `query: str, limit: int = 10` | vector cosine top-k |
-| `list_references` | `tag?: str, since?: ISO, until?: ISO, limit: int = 50` | filtered chronological list |
-| `get_reference` | `id: int` | one full record |
-| `list_tags` | — | tag names with counts |
-| `add_reference` | `url?: str, title?: str, summary?: str, tags?: list[str]` | created record (manual add path) |
+```bash
+uv run gtd-references-query "<question>" [--limit N] [--keyword-only]
+```
 
-Deliberately **not** in v1: delete, edit, bulk export, re-embed. They can be added once daily use proves they're needed; until then the CLI can do them.
+Behaviour:
+
+- Default: hybrid search — FTS5 keyword + Qwen3 semantic, fused via RRF (`k=60`).
+- `--keyword-only`: skip the Qwen3 embedder load entirely; FTS-only path. Useful for fast keyword lookups when the agent does not need semantic recall.
+- Output: agent-readable Markdown with title, score, URL/file path, source, tags, captured-at, snippet, and summary per result. When semantic-only hits have no FTS snippet, a head-of-summary fallback is emitted so the Markdown stays informative.
 
 Hybrid fusion: Reciprocal Rank Fusion with `k=60` over the two ranked lists. Simple, no tuning knobs, and well-behaved when one source returns nothing.
+
+Not currently surfaced through the CLI (deliberate v1 simplicity): tag-browse, `get_reference` by id, manual `add_reference`, delete, edit, bulk export, re-embed. These can be added once daily use proves they are needed; in the meantime the SQLite file is accessible directly for ad-hoc queries.
 
 ## 6. Capture-path change
 
@@ -188,7 +195,7 @@ Hex layers already make this clean:
 - `application/search_references.py` — tests that hybrid fusion behaves correctly with synthetic ranked lists.
 - `adapters/sqlite_reference_store/` — integration tests against `:memory:` SQLite with sqlite-vec loaded; verifies schema, FTS, vector top-k, triggers/sync.
 - `adapters/qwen_embedder.py` — not exercised in CI (model is too large to download per run). A contract test asserts the adapter conforms to `Embedder` and the two methods produce different vectors for the same input (proves the query instruction is actually being applied). Run locally, not in any CI loop.
-- `delivery/mcp_server.py` — one smoke test that boots the server in-process and round-trips a `search_references` call against a populated `:memory:` store.
+- `delivery/reference_cli.py` — unit tests for `format_markdown_results` (populated and empty result lists). End-to-end CLI invocation is exercised manually since it touches the live embedder.
 
 ## 10. Phased implementation
 
@@ -210,16 +217,16 @@ Each step has a verify check so the build can loop without me asking. Order is c
    Build and run with `--dry-run`.
    *Verify:* dry-run counts match the live Reference tasklist size; one real run, then spot-check 3 random rows for correct URL/summary parsing.
 
-5. **MCP server.**
-   Implement the seven tools above, register as a console script.
-   *Verify:* boot the server stdio in a test, call each tool, assert shapes. Then add it to Claude Desktop / Codex MCP config and run one real query end-to-end.
+5. **Query CLI.**
+   Implement `gtd-references-query` as a console script that wraps the hybrid search use case and prints Markdown evidence.
+   *Verify:* unit tests over `format_markdown_results`; one real end-to-end run from Codex Local against the live SQLite store.
 
 6. **Cleanup.**
-   Update `ARCHITECTURE.md` to mention the reference store and MCP server. Add an `ARCHITECTURE.md` inside the new subpackages following the existing per-layer-doc convention.
-   *Verify:* `uv run pytest` green; `uv run main` succeeds on a fixture batch; MCP server runs from Claude Desktop.
+   Update `ARCHITECTURE.md` to mention the reference store and the CLI. Add an `ARCHITECTURE.md` inside the new subpackages following the existing per-layer-doc convention.
+   *Verify:* `uv run pytest` green; `uv run main` succeeds on a fixture batch; `uv run gtd-references-query "<question>"` returns useful Markdown.
 
 ## 11. Open questions worth resolving before step 5
 
-- **Tags.** Right now the LLM doesn't produce tags. Options: (a) skip tags entirely in v1, (b) extend the `REFERENCE_ENGLISH_PROMPT` to also produce 2–5 tags, (c) generate tags lazily later. Recommend (b) — costs nothing extra at classify time and immediately makes `list_references` useful for browsing without a query.
-- **MCP tool descriptions.** These matter a lot for how well Claude/Codex pick the right tool. I'll draft them in step 5 and iterate based on observed picks.
+- **Tags.** Right now the LLM doesn't produce tags. Options: (a) skip tags entirely in v1, (b) extend the `REFERENCE_ENGLISH_PROMPT` to also produce 2–5 tags, (c) generate tags lazily later. Recommend (b) — costs nothing extra at classify time and immediately makes tag-based browsing useful once it lands.
+- **CLI output format for the agent.** The Markdown shape (per-result headings + bullet list of fields + snippet + summary) is what Codex actually sees; treat it as a contract and iterate based on how often Codex misreads it.
 - **Backups.** A SQLite file on the Mac is one disk failure away from gone. Easiest answer: put the DB path inside iCloud Drive or Time Machine's coverage. Not in scope for this plan but worth deciding before step 4 since the migration would be painful to redo.

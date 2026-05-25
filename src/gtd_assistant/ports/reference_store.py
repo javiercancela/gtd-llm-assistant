@@ -8,7 +8,7 @@ from gtd_assistant.domain.reference import NewReference, ReferenceRecord, Refere
 
 
 class ReferenceStore(Protocol):
-    """Storage operations needed by reference use cases and MCP tools."""
+    """Storage operations needed by reference use cases."""
 
     def find_by_url(self, url: str) -> ReferenceRecord | None:
         """Return an existing reference with this URL."""

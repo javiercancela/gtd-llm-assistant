@@ -1,15 +1,20 @@
-"""Local CLI for querying saved references without MCP."""
+"""Local CLI for querying saved references from the SQLite reference store."""
 
 from __future__ import annotations
 
 import argparse
 from collections.abc import Sequence
 
-from gtd_assistant.adapters.qwen_embedder import QwenReferenceEmbedder
+from gtd_assistant.adapters.qwen_embedder import QWEN_EMBEDDING_DIMENSION, QwenReferenceEmbedder
 from gtd_assistant.adapters.sqlite_reference_store import SQLiteReferenceStore
-from gtd_assistant.application.search_references import search_references
+from gtd_assistant.application.search_references import (
+    search_references,
+    search_references_keyword,
+)
 from gtd_assistant.domain.reference import ReferenceRecord, ReferenceSearchResult
 from gtd_assistant.infrastructure.reference_config import load_reference_db_path
+
+_SNIPPET_FALLBACK_MAX_CHARS = 200
 
 
 def main(argv: Sequence[str] | None = None) -> None:
@@ -17,9 +22,16 @@ def main(argv: Sequence[str] | None = None) -> None:
     args = _parse_args(argv)
     query = " ".join(args.query).strip()
 
-    embedder = QwenReferenceEmbedder()
-    store = SQLiteReferenceStore(load_reference_db_path(), vector_dimension=embedder.dimension)
-    results = search_references(store=store, embedder=embedder, query=query, limit=args.limit)
+    if args.keyword_only:
+        store = SQLiteReferenceStore(
+            load_reference_db_path(),
+            vector_dimension=QWEN_EMBEDDING_DIMENSION,
+        )
+        results = search_references_keyword(store=store, query=query, limit=args.limit)
+    else:
+        embedder = QwenReferenceEmbedder()
+        store = SQLiteReferenceStore(load_reference_db_path(), vector_dimension=embedder.dimension)
+        results = search_references(store=store, embedder=embedder, query=query, limit=args.limit)
 
     print(format_markdown_results(query=query, results=results))
 
@@ -63,7 +75,7 @@ def format_markdown_results(*, query: str, results: list[ReferenceSearchResult])
         if reference.tags:
             lines.append(f"- tags: {', '.join(reference.tags)}")
         _append_optional_line(lines, "captured_at", reference.captured_at)
-        _append_optional_line(lines, "snippet", result.snippet)
+        _append_optional_line(lines, "snippet", _result_snippet(result))
         _append_optional_line(lines, "summary", reference.summary)
         lines.append("")
 
@@ -83,12 +95,28 @@ def _parse_args(argv: Sequence[str] | None) -> argparse.Namespace:
         help="Maximum number of references to return. Defaults to 8.",
     )
     parser.add_argument(
-        "--format",
-        choices=("markdown",),
-        default="markdown",
-        help="Output format. Currently only markdown is supported.",
+        "--keyword-only",
+        action="store_true",
+        help=(
+            "Skip the Qwen3 embedding model and use FTS keyword search only. "
+            "Avoids the multi-second sentence-transformers / torch cold start."
+        ),
     )
     return parser.parse_args(argv)
+
+
+def _result_snippet(result: ReferenceSearchResult) -> str:
+    """Return the FTS snippet when present, else a head-of-summary fallback."""
+    snippet = _clean_text(result.snippet)
+    if snippet:
+        return snippet
+
+    summary = _clean_text(result.reference.summary)
+    if not summary or len(summary) <= _SNIPPET_FALLBACK_MAX_CHARS:
+        # Short summaries are already rendered on the `- summary:` line; a
+        # duplicate `- snippet:` line would just bloat the Markdown context.
+        return ""
+    return summary[:_SNIPPET_FALLBACK_MAX_CHARS].rstrip() + "…"
 
 
 def _append_optional_line(lines: list[str], label: str, value: object) -> None:

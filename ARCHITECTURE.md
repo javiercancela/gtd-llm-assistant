@@ -22,7 +22,7 @@ deduped Google Tasks entries or saved references, moves successful drops to
 6. `adapters.google_tasks.repository` creates, dedupes, updates, and nests
    Google Tasks through the application publishing use case.
 7. `adapters.sqlite_reference_store.repository` stores references, tags, FTS
-   rows, and embeddings for the reference use cases and MCP server.
+   rows, and embeddings for the reference use cases.
 
 ## Layer Map
 
@@ -53,7 +53,7 @@ deduped Google Tasks entries or saved references, moves successful drops to
 - Change path config: `src/gtd_assistant/infrastructure/config.py`.
 - Change Google Tasks API behavior: `src/gtd_assistant/adapters/google_tasks/repository.py`.
 - Change reference storage/search: `src/gtd_assistant/adapters/sqlite_reference_store/repository.py`.
-- Change MCP reference tools: `src/gtd_assistant/delivery/mcp_server.py`.
+- Change the local reference query CLI: `src/gtd_assistant/delivery/reference_cli.py`.
 
 ## Secrets And Logs
 
@@ -68,7 +68,7 @@ deduped Google Tasks entries or saved references, moves successful drops to
 ## Commands
 
 - `uv run main` — run one pass over the watch folder.
-- `uv run gtd-references-mcp` — run the local stdio MCP server for references.
-- `uv run gtd-references-query "question" --limit 8 --format markdown` —
-  print local reference search evidence for Codex Local or direct terminal use.
+- `uv run gtd-references-query "question" --limit 8` — print local reference
+  search evidence for Codex Local or direct terminal use. Pass
+  `--keyword-only` to skip the embedding model and use FTS keyword search only.
 - `uv run pytest` — run the test suite.
